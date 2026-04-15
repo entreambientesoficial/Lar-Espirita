@@ -27,6 +27,7 @@ const Dashboard = () => {
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkedIn, setCheckedIn] = useState(false);
+  const [presencaId, setPresencaId] = useState(null);
 
   // Estados do Questionário de Primeiro Acesso
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
@@ -61,6 +62,7 @@ const Dashboard = () => {
             .lt('checkin_time', endOfDay)
             .maybeSingle();
           setCheckedIn(!!presenca);
+          setPresencaId(presenca?.id ?? null);
         }
 
         // Fetch Reflexão Diária
@@ -93,6 +95,15 @@ const Dashboard = () => {
     } else {
       alert("Erro ao salvar perfil: " + error.message);
       setSavingProfile(false);
+    }
+  };
+
+  const handleCancelCheckin = async () => {
+    if (!presencaId) return;
+    const { error } = await supabase.from('presencas').delete().eq('id', presencaId);
+    if (!error) {
+      setCheckedIn(false);
+      setPresencaId(null);
     }
   };
 
@@ -259,10 +270,18 @@ const Dashboard = () => {
                 </span>
               </div>
               {checkedIn ? (
-                <span className="flex items-center gap-1.5 text-secondary font-bold text-sm">
-                  <span className="material-symbols-outlined text-base">check_circle</span>
-                  Feito!
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="flex items-center gap-1.5 text-secondary font-bold text-sm">
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    Feito!
+                  </span>
+                  <button
+                    onClick={handleCancelCheckin}
+                    className="text-[10px] text-gray-400 hover:text-red-400 transition-colors underline underline-offset-2"
+                  >
+                    Cancelar presença
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => navigate('/checkin')}
