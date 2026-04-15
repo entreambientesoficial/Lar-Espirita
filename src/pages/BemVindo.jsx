@@ -45,7 +45,7 @@ const BemVindo = () => {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-between p-8 font-body overflow-hidden">
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-8 font-body overflow-hidden">
       {/* Background Image Layer - FULL SCREEN COVER */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-no-repeat"
@@ -58,31 +58,27 @@ const BemVindo = () => {
       {/* Subtle Overlay to ensure readability while preserving image colors */}
       <div className="absolute inset-0 z-1 bg-white/40 backdrop-blur-[0.5px]"></div>
 
-      <div className="flex-1 flex flex-col items-center justify-center space-y-10 w-full max-w-sm z-10 transition-all">
+      <div className="flex flex-col items-center justify-center space-y-6 w-full max-w-sm z-10 transition-all">
         {/* Header Section */}
-        <div className="space-y-6 text-center animate-in fade-in slide-in-from-bottom-6 duration-1000">
-          <div className="w-32 h-32 mx-auto rounded-full bg-white shadow-2xl flex items-center justify-center p-2 border-4 border-primary/10">
+        <div className="space-y-4 text-center animate-in fade-in slide-in-from-bottom-6 duration-1000">
+          <div className="w-24 h-24 mx-auto rounded-full bg-white shadow-2xl flex items-center justify-center p-2 border-4 border-primary/10">
             <img src="/img-apoio/logo.jpg" alt="Logo" className="w-full h-full object-contain rounded-full" />
           </div>
-          <div className="space-y-3">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-primary font-headline tracking-tight leading-tight px-4 bg-white/20 rounded-xl py-1">
+          <div className="space-y-1">
+            <h1 className="text-xl md:text-2xl font-extrabold text-primary font-headline tracking-tight leading-tight px-4 bg-white/20 rounded-xl py-1">
               Lar Beneficente <br /> Eurípedes Barsanulfo
             </h1>
-            <div className="space-y-1">
-              <p className="text-on-surface-variant font-black text-[10px] uppercase tracking-[0.3em] bg-white/30 inline-block px-2 rounded">Portal do Voluntário</p>
-              <br />
-              <p className="text-primary/70 text-xs font-bold bg-white/50 px-3 py-1.5 rounded-full inline-block">Crie sua senha ou entre com sua conta google</p>
-            </div>
+            <p className="text-on-surface-variant font-black text-[10px] uppercase tracking-[0.3em] bg-white/30 inline-block px-2 rounded">Portal do Voluntário</p>
           </div>
         </div>
 
         {/* Action Section */}
-        <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
+        <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
           
           {!isReset && (
             <button 
               onClick={signInWithGoogle}
-              className="w-full bg-white text-on-surface py-4 rounded-2xl font-bold flex items-center justify-center gap-4 shadow-xl border border-gray-100 hover:bg-gray-50 active:scale-[0.98] transition-all"
+              className="w-full bg-white text-on-surface py-3.5 rounded-2xl font-bold flex items-center justify-center gap-4 shadow-xl border border-gray-100 hover:bg-gray-50 active:scale-[0.98] transition-all"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
               <span className="text-sm">Entrar com Google</span>
@@ -107,7 +103,7 @@ const BemVindo = () => {
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary/40 text-xl">mail</span>
                 <input 
                   type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required
-                  className="w-full pl-12 pr-4 py-4 bg-white/90 border border-white/50 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-xl"
+                  className="w-full pl-12 pr-4 py-3.5 bg-white/90 border border-white/50 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-xl"
                 />
               </div>
 
@@ -116,7 +112,7 @@ const BemVindo = () => {
                   <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary/40 text-xl">lock</span>
                   <input 
                     type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required
-                    className="w-full pl-12 pr-4 py-4 bg-white/90 border border-white/50 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-xl"
+                    className="w-full pl-12 pr-4 py-3.5 bg-white/90 border border-white/50 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 outline-none shadow-xl"
                   />
                 </div>
               )}
@@ -130,20 +126,20 @@ const BemVindo = () => {
 
             <button 
               type="submit" disabled={loading}
-              className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-2xl shadow-primary/40 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full bg-primary text-white py-3.5 rounded-2xl font-bold shadow-2xl shadow-primary/40 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {loading ? 'Processando...' : (isReset ? 'Enviar Link' : (isSignUp ? 'Ativar meu Acesso' : 'Entrar'))}
             </button>
           </form>
 
           {/* Helper Links */}
-          <div className="flex flex-col items-center gap-3 pt-2">
+          <div className="flex flex-col items-center gap-3">
             {!isReset ? (
               <>
-                <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-bold text-primary hover:text-primary/70 bg-white/40 px-6 py-2 rounded-full transition-all shadow-sm">
-                  {isSignUp ? 'Voltar para o Login' : 'Primeiro acesso? Crie sua senha aqui'}
+                <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-bold text-primary hover:text-primary/70">
+                  {isSignUp ? 'Voltar para o Login' : 'Primeiro acesso? Crie sua senha aqui ou acesse com sua conta Google'}
                 </button>
-                <button onClick={() => setIsReset(true)} className="text-xs font-bold text-primary/60 hover:underline px-4">
+                <button onClick={() => setIsReset(true)} className="text-xs font-bold text-primary/60 hover:underline">
                   Esqueci minha senha
                 </button>
               </>

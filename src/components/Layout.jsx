@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Layout = ({ children }) => {
   const location = useLocation();
-  const { profile, signOut, loading } = useAuth();
+  const { profile, signOut, loading, session } = useAuth();
   const [showToast, setShowToast] = useState(false);
   const isLoginPage = location.pathname === '/';
+
+  if (isLoginPage && session) return <Navigate to="/dashboard" replace />;
+  if (!isLoginPage && !loading && !session) return <Navigate to="/" replace />;
 
   if (isLoginPage) return <>{children}</>;
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="material-symbols-outlined animate-spin text-primary">progress_activity</span></div>;
@@ -15,7 +18,8 @@ const Layout = ({ children }) => {
     { path: '/dashboard', label: 'Início', icon: 'home' },
     { path: '/agenda', label: 'Agenda', icon: 'calendar_month' },
     { path: '/checkin', label: 'Check-in', icon: 'qr_code_scanner' },
-    { path: '/admin', label: 'Gestão', icon: 'admin_panel_settings', adminOnly: true },
+    { path: '/mensagens', label: 'Mural', icon: 'forum' },
+    { path: '/admin', label: 'Administração', icon: 'admin_panel_settings', adminOnly: true },
   ];
 
   const handleRestrictedClick = (e) => {
@@ -36,12 +40,20 @@ const Layout = ({ children }) => {
       {/* TopAppBar */}
       <header className="flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex items-center justify-center border border-gray-100">
-             <img src="/img-apoio/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
+             {session?.user?.user_metadata?.avatar_url ? (
+               <img src={session.user.user_metadata.avatar_url} alt="Perfil" className="w-full h-full object-cover" />
+             ) : (
+               <span className="text-primary font-bold font-headline text-lg">{profile?.name?.charAt(0)?.toUpperCase() || 'V'}</span>
+             )}
           </div>
-          <div>
-            <span className="text-xl font-bold tracking-tight text-primary font-headline block leading-tight">Casa Espírita</span>
-            <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold opacity-60">Portal do Voluntário</span>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-primary font-headline leading-tight truncate max-w-[200px]">
+              {profile?.name?.split(' ')[0] || 'Voluntário'}
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold opacity-60">
+              {profile?.role === 'admin' ? 'Administração' : 'Voluntário'}
+            </span>
           </div>
         </div>
         <button 

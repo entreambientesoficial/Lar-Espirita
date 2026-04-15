@@ -1,272 +1,51 @@
-# STATUS DO PROJETO — Portal do Voluntário
-## Lar Beneficente Eurípedes Barsanulfo
+# STATUS do Projeto - Portal do Voluntário (Casa Espírita)
 
-> **Atualizado em:** 2026-04-15  
-> **Status Geral:** ✅ FUNCIONAL — Servidor local rodando em `http://localhost:5173/`  
-> **Repositório Git:** `https://github.com/entreambientesoficial/Lar-Espirita` (branch `main`)
+> **Importante para agentes futuros:** Este documento é a Fonte da Verdade do projeto. Leia-o antes de tentar analisar a estrutura do aplicativo para entender as limitações do BD e da arquitetura atual.
 
----
+## 1. Visão Geral
+*   **Nome do Projeto:** APP-CENTROESPIRITA (Portal do Voluntário)
+*   **Tech Stack:** React 18 (Vite), Tailwind CSS, Supabase (Autenticação + Banco de Dados), React Router DOM.
+*   **Propósito:** Um sistema web com cara de aplicativo voltado para o controle de escala, presença, controle de cursos/formação e comunicação para voluntários de uma Casa Espírita.
+*   **Deploy Previsto:** Vercel/Netlify. O ambiente local usa `npm run dev` na porta 5175.
 
-## 1. VISÃO GERAL DO PROJETO
+## 2. Banco de Dados (Supabase)
+O banco de dados utiliza a autenticação padrão do Supabase unida a uma trigger automática `handle_new_user()` que replica os dados vindos da tabela `pre_cadastros` assim que o voluntário faz OAuth com Google. Não podemos fazer inserts diretos sem passar por essa regra.
 
-Portal web interno para gestão de voluntários (médiuns) do Lar Beneficente Eurípedes Barsanulfo. O sistema é controlado pelo administrador, que cadastra previamente os médiuns. O acesso dos voluntários é feito via link de convite enviado por WhatsApp ou e-mail.
+### Tabelas Atuais:
+*   `profiles`: Guarda os perfis de usuários (`id` (uuid), `name`, `email`, `role`, `phone`, `cursos`). O `role` pode ser `admin` ou `volunteer`.
+*   `pre_cadastros`: Lista de e-mails/dados pré-aprovados pela diretoria (`name`, `email`, `phone`, `role`). Sem estar aqui, um email aleatório não consegue entrar via Google no app.
+*   `atividades`: Lista de atividades que acontecem nas reuniões/semanas.
+*   `escalas`: Quem (`profile_id`) faz o que (`atividade_id`) em que dia da semana (`day_of_week`).
+*   `presencas`: O registro puro (Log/History). Salvo via Check-in de QRCode.
+*   `reflexao_diaria`: Gerencia 1 única linha (`id=1`) contendo as frases exibidas no painel de Início (`quote`, `author`, `image_url`).
+*   `mensagens`: Tabela de Chat do Mural ( `id`, `profile_id`, `content`, `is_broadcast`, `created_at`). Sincronizada em real-time (`supabase_realtime`).
 
-**Stack Tecnológica:**
-- **Frontend:** React + Vite + Tailwind CSS v4
-- **Backend/DB:** Supabase (PostgreSQL + Auth + Realtime)
-- **Autenticação:** Google OAuth + E-mail/Senha
-- **Fontes:** Plus Jakarta Sans (headline) + Manrope (body) via Google Fonts
-- **Ícones:** Material Symbols Outlined
+## 3. Páginas e Funcionalidades Implementadas
 
----
+### Áreas de Entrada
+*   **`BemVindo.jsx`**: Tela de Login. Possui login com Google (baseado nas regras restritas de Pré-Cadastro).
+*   **`Layout.jsx`**: Navbar flutuante inferior. Valida o `role` logado e esconde abas sensíveis se o usuário for apenas `volunteer`.
 
-## 2. ESTRUTURA DE ARQUIVOS
+### Acesso Geral (Voluntários)
+*   **`Dashboard.jsx` (Início)**: Exibe como se fosse uma rede social focada nas tarefas do usuário. 
+    *   Exibe o card da Escala e da Atividade que o médium fará hoje. 
+    *   Exibe a "Reflexão do Dia" dinâmica que é controlada pela administração.
+    *   Possui a mecânica de "Onboarding" (Completar Perfil). O botão de Edição de Perfil permite que o médium selecione usando Checkboxes (lista predefinida) os cursos que já fez.
+*   **`Agenda.jsx`**: Escalas dos próximos 7 dias.
+*   **`Checkin.jsx`**: Um Scanner de QRCode nativo que aciona um registro de `presencas` quando lê a string identificadora `'SALA-APOMETRIA-01'` (ou afins).
+*   **`Messages.jsx` (Mural)**: Um chat em tempo real onde voluntários e gestores trocam mensagens.
 
-```
-APP-CENTROESPIRITA/
-├── .env                          ← Variáveis secretas (NÃO subir para git)
-│   ├── VITE_SUPABASE_URL
-│   └── VITE_SUPABASE_ANON_KEY
-├── .gitignore                    ← Inclui .env e node_modules
-├── index.html                    ← Carrega fontes Google + Material Symbols
-├── package.json
-├── vite.config.js
-├── setup_atividades.sql          ← Script de referência do banco de dados
-├── img-apoio/                    ← Imagens originais de referência
-│   ├── logo.jpg                  ← Logo da instituição
-│   ├── tela-login.png            ← Fundo da tela de login
-│   └── caridade.png
-├── public/
-│   └── img-apoio/               ← Imagens servidas pelo Vite (usar estas nas rotas)
-│       ├── logo.jpg
-│       ├── tela-login.png
-│       └── caridade.png
-└── src/
-    ├── main.jsx                  ← Ponto de entrada (AuthProvider + BrowserRouter)
-    ├── App.jsx                   ← Roteamento principal
-    ├── index.css                 ← Design System / Tokens de cores e fontes
-    ├── context/
-    │   └── AuthContext.jsx       ← Lógica central de autenticação
-    ├── lib/
-    │   └── supabase.js           ← Cliente Supabase + dataService
-    ├── components/
-    │   ├── Layout.jsx            ← Header + BottomNavBar + lógica de roles
-    │   └── ProtectedRoute.jsx    ← Guard para rotas de admin
-    └── pages/
-        ├── BemVindo.jsx          ← Tela de Login ← ARQUIVO MAIS EDITADO
-        ├── Dashboard.jsx         ← Tela inicial do voluntário
-        ├── Agenda.jsx            ← Agenda semanal de atividades
-        ├── Checkin.jsx           ← Scanner QR Code para presença
-        └── Admin.jsx             ← Painel de gestão (apenas admins)
-```
+### Acesso Restrito (Administração)
+*   **`Admin.jsx`**: Dividido em três grandes abas no formato Tab:
+    1.  **Presenças Hoje**: Uma lista Live (atualiza sozinha quando o Check-in é lido via Websocket) com quem já chegou na Casa.
+    2.  **Médiuns e Gestores**: Formulário de disparo de Pré-Cadastro (gerando um convite copiado pro WhatsApp). Também exibe todos os usuários ativos listando Cargo, Nome, Formações (Cursos) e Contato (WhatsApp), com controle de Promover/Rebaixar níveis de admin. O telefone possui máscara rígida de formatação `(XX) XXXXX-XXXX`.
+    3.  **Reflexão do Dia**: Ferramenta de live pre-view do Dashboard. Permite alterar em tempo real a foto e mensagem espiritual da casa.
+
+## 4. Como Manusear o Código
+*   **Design Pattern:** O aplicativo aposta em componentes robustos (`Single-File-Components`) por rota. 
+*   **Segurança de Sessão:** A proteção global de rotas ocorre majoritariamente dentro do compontente `<Layout>` (que redireciona para a raiz de login se o navegador perder a sessão ou o usuário der signOut). O componente secundário `<ProtectedRoute>` serve puramente como checagem extra se a conta possui a variável `role` como administrativa para blindar a barra de navegação no painel de controle.
+*   **Aparência:** O estilo predominante usa "Glassmorphism" sutil e fontes `inter/outfit` amarradas via `index.css`. Cores customizadas de checkbox recorrem a utilitários de formulário como `accent-primary`. Reflexão diária faz proxy de imagens hospedadas externamente.
 
 ---
-
-## 3. DESIGN SYSTEM (index.css)
-
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-primary` | `#0D47A1` | Azul Marinho — cor principal |
-| `--color-background` | `#F5F5F7` | Fundo geral (branco gelo) |
-| `--color-surface` | `#ffffff` | Superfícies de cards |
-| `--color-on-surface` | `#1a1c1d` | Texto principal |
-| `--color-primary-container` | `#E3F2FD` | Azul claro suave |
-| `--font-headline` | `Plus Jakarta Sans` | Títulos e cabeçalhos |
-| `--font-body` | `Manrope` | Textos corridos |
-
----
-
-## 4. BANCO DE DADOS SUPABASE
-
-### Tabelas Principais
-
-#### `public.profiles`
-Criada automaticamente por trigger no primeiro login. Campos:
-- `id` (UUID — mesmo ID do `auth.users`)
-- `name` (TEXT)
-- `email` (TEXT)
-- `role` (TEXT) — valores: `'admin'` ou `'volunteer'`
-- `created_at`
-
-#### `public.pre_cadastros`
-Tabela de controle de autorização prévia. Admin insere antes do voluntário criar conta.
-- `id` (UUID)
-- `name` (TEXT) — nome do médium
-- `email` (TEXT) — e-mail que será usado no cadastro
-- `role` (TEXT) — padrão `'volunteer'`
-- `created_at`
-
-#### `public.atividades`
-Agenda de trabalhos da casa.
-- `id` (UUID)
-- `nome` (TEXT)
-- `horario` (TEXT)
-- `descricao` (TEXT)
-- `dia_semana_index` (INTEGER) — 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
-- `icone` (TEXT) — nome do ícone Material Symbols
-
-**Dados inseridos:**
-- Qui: Cura Dr. Bezerra (09:00-12:00), Evangelização Infantil (19:00-20:30)
-- Sex: Desobsessão (19:00)
-- Sáb: Grupo de Estudos (15:00-17:00)
-
-#### `public.presencas`
-Registros de check-in dos voluntários.
-- `id` (UUID)
-- `user_id` (UUID → profiles.id)
-- `atividade_id` (UUID → atividades.id)
-- `checkin_time` (TIMESTAMP) — padrão `now()`
-
-### Trigger Crítico
-```sql
--- handle_new_user: executa em auth.users AFTER INSERT
--- Consulta pre_cadastros pelo e-mail do novo usuário
--- Cria automaticamente o perfil em public.profiles com o role correto
-```
-> ⚠️ **IMPORTANTE:** Este trigger é a peça central de segurança. Sem ele, novos usuários não terão perfil e o sistema não funcionará.
-
----
-
-## 5. FLUXO DE AUTENTICAÇÃO
-
-```
-ADMIN cadastra médium (Nome + E-mail) na tela /admin
-       ↓
-Sistema insere em pre_cadastros
-       ↓
-Admin copia mensagem de convite (gerada automaticamente) e envia por WhatsApp
-       ↓
-Médium recebe link: https://[domínio]/
-       ↓
-Médium escolhe:
-  A) "Entrar com Google" → OAuth → trigger cria perfil → /dashboard
-  B) "Primeiro acesso? Crie sua senha..." → form de cadastro com e-mail+senha
-     → signUp → link de confirmação no e-mail → /dashboard
-       ↓
-Nos logins seguintes: usa a opção que escolheu (Google ou e-mail+senha)
-       ↓
-Recuperação de senha: "Esqueci minha senha" → e-mail com link de reset
-```
-
----
-
-## 6. ROTAS DA APLICAÇÃO
-
-| Rota | Componente | Proteção | Descrição |
-|---|---|---|---|
-| `/` | `BemVindo.jsx` | Pública | Tela de login |
-| `/dashboard` | `Dashboard.jsx` | Autenticado | Tela inicial do voluntário |
-| `/agenda` | `Agenda.jsx` | Autenticado | Agenda semanal |
-| `/checkin` | `Checkin.jsx` | Autenticado | Scanner QR Code |
-| `/admin` | `Admin.jsx` | `role === 'admin'` | Painel de gestão |
-
----
-
-## 7. FUNCIONALIDADES POR PÁGINA
-
-### `/` — BemVindo.jsx (Tela de Login)
-- Fundo: imagem `/img-apoio/tela-login.png` (posição `50% 10%` para enquadrar os rostos)
-- Overlay branco `bg-white/40` + blur sutil para legibilidade
-- Logo circular da instituição
-- Botão "Entrar com Google"
-- Separador "ou e-mail"
-- Formulário de login (e-mail + senha)
-- Link inferior: **"Primeiro acesso? Crie sua senha aqui ou acesse com sua conta Google"** → alterna para formulário de cadastro
-- Link "Esqueci minha senha" → alterna para formulário de recuperação
-- ⚠️ **NÃO HÁ** "Cadastre-se" aberto — o cadastro só funciona se o e-mail estiver em `pre_cadastros`
-
-### `/admin` — Admin.jsx (Painel de Gestão)
-- Aba **Presenças Hoje:** tabela em tempo real via Supabase Realtime
-- Aba **Médiuns & Gestores:**
-  - Formulário para cadastrar novo médium (Nome + E-mail → insere em `pre_cadastros`)
-  - Gera mensagem de convite formatada para copiar e enviar via WhatsApp
-  - Tabela de todos os usuários com opção de promover/revogar Admin
-
-### `/dashboard` — Dashboard.jsx
-- Boas-vindas personalizadas com nome do voluntário
-- Card com atividade do dia atual
-- Resumo de presenças
-
-### `/agenda` — Agenda.jsx
-- Lista de todas as atividades por dia da semana
-- Dados vêm de `public.atividades`
-
-### `/checkin` — Checkin.jsx
-- Scanner de QR Code via câmera
-- Registra presença em `public.presencas`
-
----
-
-## 8. CONTEXTO DE AUTENTICAÇÃO (AuthContext.jsx)
-
-Fornece para toda a aplicação via `useAuth()`:
-
-| Propriedade/Função | Tipo | Descrição |
-|---|---|---|
-| `session` | objeto | Sessão atual do Supabase Auth |
-| `profile` | objeto | Dados do usuário de `public.profiles` |
-| `loading` | boolean | Estado de carregamento inicial |
-| `signInWithGoogle()` | função | Login OAuth Google |
-| `signUpWithEmail(email, pw)` | função | Cadastro com e-mail e senha |
-| `signInWithEmail(email, pw)` | função | Login com e-mail e senha |
-| `sendPasswordReset(email)` | função | Envia e-mail de recuperação |
-| `signOut()` | função | Encerra sessão |
-
----
-
-## 9. NAVEGAÇÃO (Layout.jsx)
-
-- **Header:** logo + nome "Casa Espírita" + botão logout
-- **BottomNavBar:** Início / Agenda / Check-in / Gestão
-- A aba "Gestão" só aparece desbloqueada para `profile.role === 'admin'`; caso contrário mostra ícone de cadeado e bloqueia o acesso com toast de aviso
-- A tela de login (`/`) não renderiza o header nem a nav — sem `<Layout>`
-
----
-
-## 10. PARA FAZER O DEPLOY EM PRODUÇÃO
-
-> O código está no GitHub mas **ainda não foi hospedado** em produção.
-
-**Passos para deploy na Vercel:**
-1. Acesse vercel.com e conecte o repositório `entreambientesoficial/Lar-Espirita`
-2. Configure as **Environment Variables** no painel da Vercel:
-   ```
-   VITE_SUPABASE_URL=<sua url do supabase>
-   VITE_SUPABASE_ANON_KEY=<sua chave anon>
-   ```
-3. No Supabase, adicione a URL de produção (ex: `https://lar-espirita.vercel.app`) em:
-   - Authentication → URL Configuration → Site URL
-   - Authentication → URL Configuration → Redirect URLs
-4. No Google Cloud Console, adicione a URL de produção como URI de redirecionamento OAuth autorizado
-
----
-
-## 11. COMO RODAR LOCALMENTE
-
-```powershell
-# Entrar na pasta do projeto
-cd c:\APP-SITE-SAAS\APP-CENTROESPIRITA
-
-# Instalar dependências (primeira vez)
-npm install
-
-# Rodar o servidor de desenvolvimento
-npm run dev
-
-# Acessa em: http://localhost:5173/
-```
-
-> ⚠️ **Atenção:** Se o servidor travar (tela preta/connection refused), rode no PowerShell:
-> ```powershell
-> taskkill /F /IM node.exe; Start-Sleep -Seconds 2; npm run dev
-> ```
-
----
-
-## 12. PENDÊNCIAS / PRÓXIMOS PASSOS
-
-- [ ] Deploy em produção (Vercel ou Netlify)
-- [ ] Teste de ponta a ponta em produção (cadastrar médium → receber convite → fazer primeiro acesso)
-- [ ] Configurar domínio personalizado (se desejado)
-- [ ] Exportação de relatório de presenças em PDF (futuro)
-- [ ] Notificações push para lembretes de atividades (futuro)
+*Status atualizado por: Inteligência Artificial Local.*
+*Fase atual do Software: **Finalizado / Produção** (V 1.0 Release Candidate).*
