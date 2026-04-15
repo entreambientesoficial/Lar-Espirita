@@ -11,25 +11,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export const dataService = {
   // Buscar agenda completa
   getAgenda: async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('atividades')
       .select('*')
       .order('day_of_week', { ascending: true });
     return data || [];
   },
 
-  // Buscar atividade de hoje para o voluntário
-  getTodayActivity: async (userId) => {
-    // Busca a atividade que condiz com o dia da semana atual
+  // Buscar atividade de hoje
+  // Consulta direto na tabela atividades pois a tabela escalas pode não ter
+  // registros para todos os voluntários em todos os dias.
+  getTodayActivity: async (_userId) => {
     const today = new Date().getDay(); // 0 (Dom) a 6 (Sáb)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('atividades')
       .select('*')
       .eq('day_of_week', today)
       .limit(1)
-      .single();
-    
-    return data;
+      .maybeSingle();
+
+    return data ?? null;
   },
 
   // Registrar presença

@@ -46,7 +46,7 @@ const Messages = () => {
 
     const { error } = await supabase.from('mensagens').insert([{
       profile_id: profile.id,
-      content: newMessage,
+      content: newMessage.trim(),
       is_broadcast: profile.role === 'admin' ? isBroadcast : false
     }]);
 

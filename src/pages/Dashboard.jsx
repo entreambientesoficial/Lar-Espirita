@@ -262,10 +262,11 @@ const Dashboard = () => {
         
         <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 flex flex-col group">
           <div className="overflow-hidden h-48">
-            <img 
-              src={reflection?.image_url || "/img-apoio/caridade.png"} 
-              alt="Reflexão" 
+            <img
+              src={reflection?.image_url || "/img-apoio/caridade.png"}
+              alt="Reflexão"
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+              onError={(e) => { e.target.onerror = null; e.target.src = '/img-apoio/caridade.png'; }}
             />
           </div>
           <div className="p-8 space-y-4 bg-primary/5">

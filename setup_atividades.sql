@@ -1,32 +1,36 @@
--- Script para Criao da Tabela de Atividades
--- Execute este script no SQL Editor do seu Painel do Supabase
+-- ============================================================
+-- Script de População da Tabela de Atividades
+-- Lar Beneficente Eurípedes Barsanulfo
+--
+-- SEGURO: não usa TRUNCATE (presencas tem FK para atividades).
+-- Apaga apenas os dias SEM registros de presença (1, 2, 3, 6)
+-- e insere as atividades corretas para todos os dias.
+-- Execute no SQL Editor do painel do Supabase.
+-- ============================================================
 
--- 1. Criar a tabela se ela no existir
-CREATE TABLE IF NOT EXISTS atividades (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome TEXT NOT NULL,
-  horario TEXT NOT NULL,
-  descricao TEXT,
-  dia_semana_index INTEGER NOT NULL, -- 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
-  icone TEXT DEFAULT 'verified',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- 1. Remove apenas os dias que não têm presenças associadas
+--    (dias que estavam faltando na agenda)
+DELETE FROM atividades WHERE day_of_week IN (1, 2, 3, 6);
 
--- 2. Limpar dados antigos (Opcional, use com cautela)
--- TRUNCATE atividades;
+-- 2. Insere os dias que estavam faltando + sábado atualizado
+INSERT INTO atividades (name, time_range, description, day_of_week, icon) VALUES
 
--- 3. Inserir os registros solicitados para Qui, Sex e Sb
-INSERT INTO atividades (nome, horario, descricao, dia_semana_index, icone)
-VALUES 
-  -- Quinta-feira (4)
-  ('Cura Dr. Bezerra', '09:00 - 12:00', 'Sessão matutina de cura espiritual e fluidoterapia.', 4, 'medical_services'),
-  ('Evangelização Infantil', '19:00 - 20:30', 'Ensino da doutrina espírita para crianças e jovens.', 4, 'child_care'),
-  
-  -- Sexta-feira (5)
-  ('Desobsessão', '19:00', 'Trabalho especializado de auxílio a espíritos necessitados.', 5, 'psychology'),
-  
+  -- Segunda-feira (1)
+  ('Apometria',                   '19:00',         'Trabalho de desobstrução e harmonização espiritual via apometria.',          1, 'self_improvement'),
+  ('Cura Dr. Bezerra de Menezes', '19:00',         'Sessão de cura espiritual e fluidoterapia com a corrente do Dr. Bezerra.',  1, 'medical_services'),
+
+  -- Terça-feira (2)
+  ('Cura Quântica',               '19:00',         'Atendimento de cura com técnicas quânticas e espirituais.',                 2, 'blur_circular'),
+  ('Mesa Branca',                 '20:00',         'Trabalho mediúnico de mesa branca para auxílio espiritual.',                2, 'groups'),
+
+  -- Quarta-feira (3)
+  ('Reiki',                       '19:00',         'Canalização de energia vital para equilíbrio físico e espiritual.',         3, 'spa'),
+  ('Reiki em Animais',            '19:00',         'Aplicação de Reiki em animais de estimação e silvestres.',                  3, 'pets'),
+
   -- Sábado (6)
-  ('Grupo de Estudos', '15:00 - 17:00', 'Estudo aprofundado das obras básicas de Allan Kardec.', 6, 'book');
+  ('Grupo de Estudos Espirituais','15:00 – 17:00', 'Estudo aprofundado das obras básicas de Allan Kardec e Chico Xavier.',     6, 'book');
 
--- 4. Exemplo de Query para o Frontend
--- SELECT * FROM atividades WHERE dia_semana_index = 4;
+-- 3. Confirma o resultado completo
+SELECT day_of_week, name, time_range
+FROM atividades
+ORDER BY day_of_week, time_range;

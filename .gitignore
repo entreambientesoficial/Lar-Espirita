@@ -26,6 +26,9 @@ dist-ssr
 # Environment
 .env
 .env.local
+
+# Scripts locais com credenciais
+setAdmin.js
 .env.development.local
 .env.test.local
 .env.production.local

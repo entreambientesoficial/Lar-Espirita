@@ -88,9 +88,33 @@ const Admin = () => {
 
   const handleRegisterMedium = async (e) => {
     e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) {
+      alert('Por favor, insira um endereço de e-mail válido.');
+      return;
+    }
+
+    const phoneDigits = newPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      alert('Por favor, insira um número de telefone válido com DDD (ex: (11) 90000-0000).');
+      return;
+    }
+
+    const { data: existing } = await supabase
+      .from('pre_cadastros')
+      .select('id')
+      .eq('email', newEmail.toLowerCase().trim())
+      .maybeSingle();
+
+    if (existing) {
+      alert('Este e-mail já está cadastrado no sistema.');
+      return;
+    }
+
     const { error } = await supabase
       .from('pre_cadastros')
-      .insert([{ name: newName, email: newEmail, phone: newPhone, role: 'volunteer' }]);
+      .insert([{ name: newName.trim(), email: newEmail.toLowerCase().trim(), phone: newPhone, role: 'volunteer' }]);
 
     if (!error) {
       const msg = `Olá ${newName.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Casa Espírita foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${newEmail}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
@@ -111,6 +135,16 @@ const Admin = () => {
   };
 
   const toggleAdmin = async (userId, currentRole) => {
+    if (userId === profile?.id) return;
+
+    if (currentRole === 'admin') {
+      const adminCount = users.filter(u => u.role === 'admin').length;
+      if (adminCount <= 1) {
+        alert('Não é possível remover o único administrador do sistema.');
+        return;
+      }
+    }
+
     const newRole = currentRole === 'admin' ? 'volunteer' : 'admin';
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
     fetchInitialData();

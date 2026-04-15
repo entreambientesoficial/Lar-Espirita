@@ -50,23 +50,23 @@ const Checkin = () => {
     };
   }, [isScanning, isVerified]);
 
-  const handleSuccess = async (text) => {
+  const handleSuccess = async (_text) => {
     if (scannerRef.current) {
-      await scannerRef.current.stop().catch(e => console.error(e));
+      await scannerRef.current.stop().catch(() => {});
     }
 
-    if (profile && activity) {
-      // Registrar presença real no Supabase
-      const { error } = await dataService.registerPresence(profile.id, activity.id);
-      if (!error) {
-        setIsVerified(true);
-        setIsScanning(false);
-      } else {
-        setError("Erro ao registrar presença no banco. Tente novamente.");
-      }
-    } else {
-      // Fallback para quando não há atividade hoje (ainda permitir teste visual)
+    if (!profile || !activity) {
+      setError("Nenhuma atividade programada para hoje. Presença não registrada.");
+      setIsScanning(false);
+      return;
+    }
+
+    const { error } = await dataService.registerPresence(profile.id, activity.id);
+    if (!error) {
       setIsVerified(true);
+      setIsScanning(false);
+    } else {
+      setError("Erro ao registrar presença. Tente novamente.");
       setIsScanning(false);
     }
   };
