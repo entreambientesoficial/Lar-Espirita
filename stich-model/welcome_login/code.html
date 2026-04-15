@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Casa Espírita - Portal do Voluntário</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#eeeef0",
+                        "surface-container-highest": "#e2e2e4",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-dim": "#d9dadc",
+                        "secondary-container": "#81f3e5",
+                        "on-secondary-container": "#006f66",
+                        "on-surface": "#1a1c1d",
+                        "on-primary-fixed": "#001945",
+                        "tertiary": "#602100",
+                        "primary-fixed": "#d9e2ff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "outline": "#737783",
+                        "error": "#ba1a1a",
+                        "secondary": "#006a62",
+                        "on-tertiary-container": "#ffa781",
+                        "on-surface-variant": "#434652",
+                        "on-secondary": "#ffffff",
+                        "surface-container-low": "#f3f3f5",
+                        "surface": "#f9f9fb",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-secondary-fixed-variant": "#005049",
+                        "inverse-primary": "#b0c6ff",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f9f9fb",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#a1bbff",
+                        "surface-container-high": "#e8e8ea",
+                        "inverse-surface": "#2f3132",
+                        "primary": "#003178",
+                        "tertiary-container": "#853100",
+                        "secondary-fixed-dim": "#66d9cc",
+                        "on-secondary-fixed": "#00201d",
+                        "on-background": "#1a1c1d",
+                        "surface-variant": "#e2e2e4",
+                        "primary-container": "#0d47a1",
+                        "surface-tint": "#2b5bb5",
+                        "outline-variant": "#c3c6d4",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#84f5e8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#f0f0f2",
+                        "on-primary-fixed-variant": "#00429c",
+                        "background": "#f9f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #f9f9fb;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ethereal-gradient {
+            background: radial-gradient(circle at top right, rgba(13, 71, 161, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at bottom left, rgba(0, 106, 98, 0.03) 0%, transparent 40%);
+        }
+        .soft-beam {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 255, 255, 0) 100%);
+            transform: rotate(-45deg);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col text-on-surface overflow-x-hidden">
+<!-- Hero / Background Layer -->
+<div class="fixed inset-0 ethereal-gradient -z-10"></div>
+<!-- Watermark Motif -->
+<div class="fixed top-0 right-0 p-24 opacity-[0.04] pointer-events-none select-none">
+<span class="material-symbols-outlined text-[32rem]">raven</span>
+</div>
+<!-- Soft Light Beam -->
+<div class="fixed -top-1/4 -left-1/4 w-[150%] h-[150%] soft-beam opacity-30 pointer-events-none"></div>
+<main class="flex-grow flex items-center justify-center px-6 py-12">
+<div class="w-full max-w-lg">
+<!-- Logo Section -->
+<div class="text-center mb-16 relative">
+<div class="inline-block p-6 rounded-xl bg-surface-container-lowest/50 backdrop-blur-md mb-8">
+<img alt="Casa Espírita Logo" class="h-24 w-auto object-contain" data-alt="minimalist spiritual logo with a stylized dove and olive branch in deep blue and teal tones on a clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEI2Hr5-3CuvuoqSTxc-M-iFVYdmTBSicFoBV1lLfayNBztBT3SvbNs0KY6UrpWMp-7G69JRelKW4SbtapKmUNdqYdwDP4BzXMXwZmS9zMfmxDkEJ0rzGbHdXPLnbCkyo_bBO3rFJLW-h_KiZKZ-G4KsvPK5YPP426METVQ3Gij-xtncG25hnMj0ZzZlR36YNOcXgrmvO0Aw6-waOUbCf2CuqX40IARL-21yfLMlhIjFJoH7XlcvL5z0S_7By7jDvTLPngxiViHt4"/>
+</div>
+<h1 class="font-headline font-extrabold text-4xl lg:text-5xl text-primary tracking-tight mb-4">
+                    Bem-vindo à Casa
+                </h1>
+<p class="font-body text-on-surface-variant text-lg max-w-xs mx-auto leading-relaxed">
+                    A paz e o trabalho voluntário começam aqui.
+                </p>
+</div>
+<!-- Login Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 lg:p-12 shadow-[0_20px_40px_rgba(13,71,161,0.06)] relative overflow-hidden group">
+<!-- Subtle Accent -->
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-primary-container to-secondary opacity-20"></div>
+<div class="space-y-8">
+<!-- Google Option -->
+<button class="w-full flex items-center justify-center gap-4 bg-surface-container-low hover:bg-surface-container-highest transition-all duration-300 py-5 px-6 rounded-lg font-headline font-semibold text-primary group/btn">
+<svg class="w-6 h-6" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="currentColor"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="currentColor"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="currentColor"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z" fill="currentColor"></path>
+</svg>
+<span class="text-lg">Continue with Google</span>
+</button>
+<div class="relative flex items-center">
+<div class="flex-grow border-t border-outline-variant/30"></div>
+<span class="flex-shrink mx-4 text-sm font-label text-on-surface-variant/60 uppercase tracking-widest">Ou acesse por e-mail</span>
+<div class="flex-grow border-t border-outline-variant/30"></div>
+</div>
+<!-- Email / Magic Link -->
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="font-headline font-bold text-sm text-primary px-1" for="email">Endereço de E-mail</label>
+<input class="w-full bg-surface-container-low border-none border-b-2 border-outline-variant/20 focus:border-primary focus:ring-0 rounded-lg py-5 px-6 font-body text-lg transition-all" id="email" placeholder="seu@email.com" type="email"/>
+</div>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-5 px-6 rounded-lg font-headline font-bold text-lg shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200" type="submit">
+                            Enviar Magic Link (Email)
+                        </button>
+</form>
+</div>
+</div>
+<!-- Footer Note -->
+<footer class="mt-12 text-center">
+<p class="font-body text-on-surface-variant/80 text-sm leading-relaxed">
+                    Acesso exclusivo para voluntários registrados.<br/>
+<a class="text-primary font-semibold hover:underline underline-offset-4 mt-2 inline-block" href="#">Precisa de ajuda ou deseja ser voluntário?</a>
+</p>
+</footer>
+</div>
+</main>
+<!-- Visual Accents (Editorial Asymmetry) -->
+<div class="hidden lg:block fixed bottom-12 left-12 max-w-[200px]">
+<div class="flex flex-col gap-4">
+<div class="h-1 w-12 bg-secondary/40 rounded-full"></div>
+<p class="text-on-surface-variant/50 text-xs font-label italic">
+                "Onde houver desespero, que eu leve a esperança."
+            </p>
+</div>
+</div>
+<!-- Responsive Filter Overlays (Non-blocking) -->
+<div class="fixed inset-0 pointer-events-none mix-blend-soft-light opacity-20">
+<div class="w-full h-full bg-surface-container-high/30"></div>
+</div>
+</body></html>

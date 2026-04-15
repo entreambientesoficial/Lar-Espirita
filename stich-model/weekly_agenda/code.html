@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Serenity Portal - Weekly Agenda</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#eeeef0",
+                    "surface-container-highest": "#e2e2e4",
+                    "tertiary-fixed-dim": "#ffb596",
+                    "surface-dim": "#d9dadc",
+                    "secondary-container": "#81f3e5",
+                    "on-secondary-container": "#006f66",
+                    "on-surface": "#1a1c1d",
+                    "on-primary-fixed": "#001945",
+                    "tertiary": "#602100",
+                    "primary-fixed": "#d9e2ff",
+                    "tertiary-fixed": "#ffdbcd",
+                    "outline": "#737783",
+                    "error": "#ba1a1a",
+                    "secondary": "#006a62",
+                    "on-tertiary-container": "#ffa781",
+                    "on-surface-variant": "#434652",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#f3f3f5",
+                    "surface": "#f9f9fb",
+                    "on-tertiary-fixed": "#360f00",
+                    "on-secondary-fixed-variant": "#005049",
+                    "inverse-primary": "#b0c6ff",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#f9f9fb",
+                    "error-container": "#ffdad6",
+                    "on-primary-container": "#a1bbff",
+                    "surface-container-high": "#e8e8ea",
+                    "inverse-surface": "#2f3132",
+                    "primary": "#003178",
+                    "tertiary-container": "#853100",
+                    "secondary-fixed-dim": "#66d9cc",
+                    "on-secondary-fixed": "#00201d",
+                    "on-background": "#1a1c1d",
+                    "surface-variant": "#e2e2e4",
+                    "primary-container": "#0d47a1",
+                    "surface-tint": "#2b5bb5",
+                    "outline-variant": "#c3c6d4",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#84f5e8",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "inverse-on-surface": "#f0f0f2",
+                    "on-primary-fixed-variant": "#00429c",
+                    "background": "#f9f9fb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {},
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Manrope"],
+                    "label": ["Manrope"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; background-color: #f9f9fb; color: #1a1c1d; }
+        .headline-font { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        .glass-nav { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface selection:bg-primary-container selection:text-white">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50 bg-[#f9f9fb] dark:bg-slate-950 no-border tonal-shift bg-surface-container-high">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="close-up portrait of a serene man with a kind expression in soft natural lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZLQ2_pcQ8D4EIm5o-Fu44fx4DY4S7lKkg3a2yZQlDu4tGn6G84Lg-08s7hBObbnZvbMm6MnktrTrNOQ0I0kWU2R46bDkuxvBhgMbQ-aUQFAV9W9oe_H41NoPQGy-NZFtnhoEV2dqjGR9uPReiadOurh83zvjamFsvhsTYtC7LOa9_1JR4OdskLDo0nsdFIboiTMTUlQ5Rf7R5rqmNUaHCSNPPJ4S4KAUKdebUSdaEg4lQfiaXthnIh9_mhQqahecdGhUBwvpQe4o"/>
+</div>
+<h1 class="text-xl font-bold tracking-tight text-[#0d47a1] dark:text-blue-400 headline-font">Serenity Portal</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all text-[#0d47a1] dark:text-blue-400">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 pb-32 pt-8">
+<!-- Editorial Header Section -->
+<section class="mb-12 relative overflow-hidden">
+<div class="absolute -top-12 -right-12 opacity-[0.04] pointer-events-none">
+<span class="material-symbols-outlined text-[240px]" data-icon="dove">raven</span>
+</div>
+<div class="relative z-10">
+<p class="text-secondary font-semibold tracking-wider text-sm mb-2 uppercase">Weekly Guidance</p>
+<h2 class="text-4xl md:text-5xl font-extrabold headline-font text-primary mb-4 leading-tight">Your Path of Service</h2>
+<p class="text-on-surface-variant max-w-xl text-lg leading-relaxed">Organize your spiritual commitments and volunteer shifts for the upcoming week. Every moment of service is a seed of light.</p>
+</div>
+</section>
+<!-- Horizontal Day Selector (Mobile/Compact) -->
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-6 mb-8 snap-x">
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-primary text-white font-bold transition-all shadow-md snap-start">Mon</button>
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-all snap-start">Tue</button>
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-all snap-start">Wed</button>
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-all snap-start">Thu</button>
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-all snap-start">Fri</button>
+<button class="flex-shrink-0 px-6 py-3 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container transition-all snap-start">Sat</button>
+</div>
+<!-- Agenda Grid Layout (Editorial Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Monday Section -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-primary-container rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Monday</h3>
+</div>
+<!-- Activity Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-transparent hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="energy_savings_leaf">energy_savings_leaf</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Apometria</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Harmonization and energetic clearing through the unfolding of subtle bodies.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+<!-- Activity Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-transparent hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="medical_services">medical_services</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Cura Dr. Bezerra</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Spiritual medical assistance and vibrational healing sessions.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+<!-- Tuesday Section (Highlighting Registered) -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-secondary rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Tuesday</h3>
+</div>
+<!-- Activity Card (Registered State) -->
+<div class="bg-[#fff9e6] p-6 rounded-xl shadow-[0_20px_40px_rgba(13,71,161,0.06)] hover:scale-[1.02] transition-transform duration-300 ring-2 ring-amber-200/50">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-amber-100 text-amber-800 rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-amber-500" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-amber-900">Cura Quântica</h4>
+<p class="text-amber-800/70 text-sm leading-relaxed mb-6">Harnessing quantum energy fields for holistic spiritual rejuvenation.</p>
+<button class="w-full py-3 bg-[#ffdad6] text-on-error-container font-bold rounded-lg hover:bg-error-container/80 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="cancel">cancel</span>
+                        Cancel Presence
+                    </button>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">20:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Mesa Branca</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">A gathering for mediumistic studies and spiritual connectivity.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+<!-- Wednesday Section -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-tertiary rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Wednesday</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="spa">spa</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Reiki</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Universal life energy transfer for relaxation and healing.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="pets">pets</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Reiki em Animais</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Compassionate energy work specifically for our animal brothers.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+<!-- Thursday Section -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-primary-container rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Thursday</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">09:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="medical_services">medical_services</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Cura Dr. Bezerra</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Morning medical assistance and vibrational healing sessions.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="child_care">child_care</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Evangelização Infantil</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Spiritual education and moral foundation for children.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+<!-- Friday Section -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-error rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Friday</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">19:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="release_alert">release_alert</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Desobsessão</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Focused assistance for spiritual liberation and mental peace.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+<!-- Saturday Section -->
+<div class="space-y-6">
+<div class="flex items-center gap-3 mb-2">
+<span class="w-1.5 h-8 bg-secondary-fixed-dim rounded-full"></span>
+<h3 class="text-2xl font-bold headline-font text-primary">Saturday</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl hover:scale-[1.02] transition-transform duration-300">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs font-bold px-3 py-1 bg-surface-container-high text-on-surface-variant rounded-full uppercase tracking-widest">15:00</span>
+<span class="material-symbols-outlined text-primary/30" data-icon="menu_book">menu_book</span>
+</div>
+<h4 class="text-xl font-bold mb-2 headline-font text-on-surface">Grupo de Estudos</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-6">Deep dive into spiritual doctrine and philosophical texts.</p>
+<button class="w-full py-3 bg-secondary-container text-on-secondary-container font-bold rounded-lg hover:brightness-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="check_circle">check_circle</span>
+                        Confirm Presence
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl docked full-width bottom-0 rounded-t-[3rem] shadow-xl no-border tonal-shift shadow-[0_-4px_20px_rgba(13,71,161,0.04)]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#0d47a1] text-white rounded-full p-3 hover:scale-110 transition-transform active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_month" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Agenda</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="qr_code_scanner">qr_code_scanner</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Check-in</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Admin</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* Cores Refinadas conforme pedido */
+  --color-primary: #0D47A1; /* Azul Marinho Principal */
+  --color-background: #F5F5F7; /* Branco Gelo Fundo */
+  
+  /* Mantendo as variações tonais do Stitch baseadas na nova primária */
+  --color-surface: #ffffff;
+  --color-surface-container: #eeeef0;
+  --color-surface-container-high: #e8e8ea;
+  --color-on-surface: #1a1c1d;
+  --color-on-surface-variant: #434652;
+  --color-primary-container: #E3F2FD; /* Azul claro suave */
+  --color-on-primary-container: #0D47A1;
+  
+  --color-secondary: #006a62;
+  --color-secondary-container: #81f3e5;
+  
+  --radius-default: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3.5rem;
+
+  --font-headline: "Plus Jakarta Sans", ui-sans-serif, system-ui;
+  --font-body: "Manrope", ui-sans-serif, system-ui;
+}
+
+@layer base {
+  body {
+    @apply font-body bg-background text-on-surface min-h-screen overflow-x-hidden;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .ethereal-gradient {
+    background: radial-gradient(circle at top right, rgba(13, 71, 161, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at bottom left, rgba(0, 106, 98, 0.02) 0%, transparent 40%);
+  }
+
+  .soft-beam {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 100%);
+    transform: rotate(-45deg);
+  }
+
+  .symbolic-watermark {
+    position: absolute;
+    bottom: -5%;
+    right: -10%;
+    font-size: 24rem;
+    opacity: 0.03;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .tonal-shift {
+    @apply bg-surface-container-high;
+  }
+
+  @keyframes scan {
+    0% { top: 0%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .scanner-laser {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: #0d47a1;
+    box-shadow: 0 0 15px 2px rgba(13, 71, 161, 0.8);
+    z-index: 20;
+    animation: scan 2s linear infinite;
+  }
+
+  .scanner-viewfinder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px;
+    height: 250px;
+    background: transparent;
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.6);
+    border: 2px solid white;
+    border-radius: 24px;
+    z-index: 15;
+    overflow: hidden;
+  }
+
+  .scanner-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: #0d47a1;
+    z-index: 21;
+  }
+}

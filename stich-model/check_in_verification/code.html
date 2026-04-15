@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Serenity Portal - Active Check-in</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container": "#eeeef0",
+                      "surface-container-highest": "#e2e2e4",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "surface-dim": "#d9dadc",
+                      "secondary-container": "#81f3e5",
+                      "on-secondary-container": "#006f66",
+                      "on-surface": "#1a1c1d",
+                      "on-primary-fixed": "#001945",
+                      "tertiary": "#602100",
+                      "primary-fixed": "#d9e2ff",
+                      "tertiary-fixed": "#ffdbcd",
+                      "outline": "#737783",
+                      "error": "#ba1a1a",
+                      "secondary": "#006a62",
+                      "on-tertiary-container": "#ffa781",
+                      "on-surface-variant": "#434652",
+                      "on-secondary": "#ffffff",
+                      "surface-container-low": "#f3f3f5",
+                      "surface": "#f9f9fb",
+                      "on-tertiary-fixed": "#360f00",
+                      "on-secondary-fixed-variant": "#005049",
+                      "inverse-primary": "#b0c6ff",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "on-tertiary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-bright": "#f9f9fb",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#a1bbff",
+                      "surface-container-high": "#e8e8ea",
+                      "inverse-surface": "#2f3132",
+                      "primary": "#003178",
+                      "tertiary-container": "#853100",
+                      "secondary-fixed-dim": "#66d9cc",
+                      "on-secondary-fixed": "#00201d",
+                      "on-background": "#1a1c1d",
+                      "surface-variant": "#e2e2e4",
+                      "primary-container": "#0d47a1",
+                      "surface-tint": "#2b5bb5",
+                      "outline-variant": "#c3c6d4",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#84f5e8",
+                      "surface-container-lowest": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#f0f0f2",
+                      "on-primary-fixed-variant": "#00429c",
+                      "background": "#f9f9fb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "body": ["Manrope"],
+                      "label": ["Manrope"]
+              }
+            },
+          }
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50 bg-[#f9f9fb] dark:bg-slate-950 no-border tonal-shift bg-surface-container-high">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close up professional headshot of a friendly smiling volunteer with soft natural lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfXEakI64SdjBSF8OAuqfqbSN9hDcvzGbuD9DJlODPAGuilNITcDuVdFUA3nL_EDmlHkKzJzZvhIA2zz2Si61L_BaLi-MGVV8A1DW8U7HCxMDDDFuHJjlalUd6LrLGm7g2rmRwrcBdiEMRTtA6BFk80GVBWLzylOiYs5cbIHm3MY_Eh0RaxROpHhLzem1BFiJmB0wn3MRw_eUfmRiNU7Cpt2AfpdjnzIh2DlRErKoI8GN5LzHJ_gB5-Ixkr6Uy3F3mc_d-qqUF3vw"/>
+</div>
+<span class="font-['Plus_Jakarta_Sans'] font-bold text-lg text-[#0d47a1] dark:text-blue-400 tracking-tight">Serenity Portal</span>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<main class="max-w-md mx-auto px-6 py-8 space-y-10">
+<!-- Hero Section: Active Activity -->
+<section class="relative overflow-hidden bg-surface-container-lowest rounded-xl p-8 space-y-4">
+<div class="absolute -right-12 -top-12 opacity-[0.04]">
+<span class="material-symbols-outlined text-[12rem]">spa</span>
+</div>
+<div class="space-y-1">
+<span class="text-secondary font-bold tracking-widest text-xs uppercase">Today's Schedule</span>
+<h1 class="text-4xl font-extrabold text-primary leading-tight">Reiki Healing Session</h1>
+<p class="text-on-surface-variant leading-relaxed">Quiet Room B • 14:00 - 15:30</p>
+</div>
+<div class="flex items-center gap-3 py-2">
+<div class="flex -space-x-2">
+<img class="w-8 h-8 rounded-full border-2 border-surface-container-lowest" data-alt="Small round avatar of a session participant smiling calmly" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATaPYx_hWFhO3RjPeSXs43AHGX6wAqUK0YFwK7q76e9BWzHkwtWhjjkuif7jhU7bWwEwolGW9V57r_IgfaA5ZeAlR8pFzhr-ck1SRCMk5A2QlI6EGppJVu30MLhogoeCHINYL_y1H3q2m_7gnIDdls-uL05P0Kcqd0RjFiLaK8b_Zg-NMoG8X0O5vJGLccugJR1KGLk97nS7GPCZETUGaW5kNOMqBf8YcgoRTr9MJIpboZGZ4Ol7UK484axQMxTI6djhuFAaOf4us"/>
+<img class="w-8 h-8 rounded-full border-2 border-surface-container-lowest" data-alt="Small round avatar of a session participant with a warm expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMP6vtMnyOgGbpspbqcMh-0SfR1ZsTrOqG2BCIQbofo8nCk8T4kUckps40jcKO2gWYwlwiUFj2nLRC6qqAjnDNF-Nv5tyt_75O3Nx7mKA2PCcXDgMhyqjUO13-MNDZYsSsZ_F3Mf1nVVadlv0sXG7bLxd2PrbVrNOXbbsbgPsC_lsOtTrOZPgbT3YC-tmdL6AoO3iNeXG_ZA5O4B8v3iqbsXtmvILZCzG5I44ro62s1JgEK9lBAysFFroqm0u4jiGFrzGBmD_cebU"/>
+</div>
+<span class="text-sm text-on-surface-variant font-medium">+12 others attending</span>
+</div>
+</section>
+<!-- Primary Action: Scan Button -->
+<section class="flex flex-col items-center justify-center space-y-8">
+<button class="group relative w-64 h-64 bg-primary-container text-on-primary rounded-full flex flex-col items-center justify-center space-y-4 shadow-[0_20px_40px_rgba(13,71,161,0.15)] hover:scale-105 active:scale-95 transition-all duration-300">
+<div class="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-primary-container opacity-100"></div>
+<div class="relative z-10 flex flex-col items-center">
+<span class="material-symbols-outlined text-6xl mb-2" data-weight="fill">qr_code_scanner</span>
+<span class="text-lg font-bold font-headline tracking-wide">Scan Center QR Code</span>
+</div>
+</button>
+<p class="text-center text-sm text-on-surface-variant px-12 leading-relaxed">
+                Position the camera toward the QR code located at the sanctuary entrance to confirm your presence.
+            </p>
+</section>
+<!-- Success State Section -->
+<section class="bg-secondary-container/30 rounded-xl p-8 space-y-6 relative overflow-hidden">
+<!-- Asymmetric Watermark -->
+<div class="absolute -left-8 -bottom-8 opacity-[0.05] text-secondary">
+<span class="material-symbols-outlined text-[10rem]">check_circle</span>
+</div>
+<div class="flex items-center gap-4 relative z-10">
+<div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center text-on-secondary">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div>
+<h2 class="text-xl font-bold text-on-secondary-container leading-tight">Check-in Verified</h2>
+<p class="text-sm text-on-secondary-container/80">Arrival logged successfully</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-6 flex flex-col items-center space-y-3 relative z-10">
+<span class="text-[10px] uppercase tracking-[0.2em] font-bold text-outline">Verification Code</span>
+<span class="text-2xl font-mono font-bold text-primary tracking-wider">20260415-REIKI-003</span>
+<div class="h-[1px] w-full bg-outline-variant/20"></div>
+<p class="text-center text-xs text-on-surface-variant italic leading-relaxed">
+                    This code serves as your digital token of service for today's Reiki session.
+                </p>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl rounded-t-[3rem] no-border tonal-shift shadow-[0_-4px_20px_rgba(13,71,161,0.04)]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Agenda</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#0d47a1] text-white rounded-full p-3 hover:scale-110 transition-transform active:scale-90 shadow-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Check-in</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-3 hover:scale-110 transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-['Plus_Jakarta_Sans'] font-medium text-[11px]">Admin</span>
+</a>
+</nav>
+</body></html>
