@@ -26,6 +26,7 @@ const Dashboard = () => {
   const { profile } = useAuth();
   const [activity, setActivity] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [checkedIn, setCheckedIn] = useState(false);
 
   // Estados do Questionário de Primeiro Acesso
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
@@ -45,6 +46,22 @@ const Dashboard = () => {
 
         const data = await dataService.getTodayActivity(profile.id);
         setActivity(data);
+
+        // Verifica se o usuário já fez check-in hoje para esta atividade
+        if (data) {
+          const today = new Date();
+          const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+          const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+          const { data: presenca } = await supabase
+            .from('presencas')
+            .select('id')
+            .eq('user_id', profile.id)
+            .eq('atividade_id', data.id)
+            .gte('checkin_time', startOfDay)
+            .lt('checkin_time', endOfDay)
+            .maybeSingle();
+          setCheckedIn(!!presenca);
+        }
 
         // Fetch Reflexão Diária
         const { data: refData } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
@@ -208,7 +225,9 @@ const Dashboard = () => {
         <div className="flex justify-between items-center px-1">
           <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">Seu Trabalho Hoje</h3>
           {!loading && activity && (
-            <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase">Confirmado</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${checkedIn ? 'text-secondary bg-secondary/10' : 'text-primary/50 bg-primary/5'}`}>
+              {checkedIn ? 'Confirmado' : 'Programado'}
+            </span>
           )}
         </div>
         
@@ -235,14 +254,23 @@ const Dashboard = () => {
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
               <div className="flex flex-col">
                 <span className="text-primary font-black text-lg tracking-tight">{activity.time_range}</span>
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">PRESENÇA CONFIRMADA</span>
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                  {checkedIn ? 'Presença Confirmada' : 'Confirmar Presença'}
+                </span>
               </div>
-              <button 
-                onClick={() => navigate('/checkin')}
-                className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
-              >
-                Check-in
-              </button>
+              {checkedIn ? (
+                <span className="flex items-center gap-1.5 text-secondary font-bold text-sm">
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  Feito!
+                </span>
+              ) : (
+                <button
+                  onClick={() => navigate('/checkin')}
+                  className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                >
+                  Check-in
+                </button>
+              )}
             </div>
           </div>
         ) : (
