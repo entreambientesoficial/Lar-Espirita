@@ -25,15 +25,15 @@ export const dataService = {
     const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
     const { data } = await supabase
       .from('presencas')
-      .select('id, atividades(*)')
+      .select('id, qr_checkin, atividades(*)')
       .eq('user_id', userId)
       .gte('checkin_time', startOfDay)
       .lt('checkin_time', endOfDay)
       .limit(1)
       .maybeSingle();
     if (!data) return null;
-    // Retorna os dados da atividade + presenca_id para permitir cancelamento
-    return { presenca_id: data.id, ...data.atividades };
+    // Retorna dados da atividade + presenca_id e qr_checkin para controle de UI
+    return { presenca_id: data.id, qr_checkin: data.qr_checkin, ...data.atividades };
   },
 
   // Registrar presença

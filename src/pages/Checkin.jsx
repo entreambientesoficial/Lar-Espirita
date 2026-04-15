@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
-import { dataService } from '../lib/supabase';
+import { dataService, supabase } from '../lib/supabase';
 
 const Checkin = () => {
   const { profile } = useAuth();
@@ -61,15 +61,21 @@ const Checkin = () => {
       return;
     }
 
-    // Se o voluntário já confirmou pela Agenda (presenca_id existe), apenas exibe sucesso
+    // Se já confirmou pela Agenda: apenas marca qr_checkin = true
     if (activity.presenca_id) {
+      await supabase
+        .from('presencas')
+        .update({ qr_checkin: true })
+        .eq('id', activity.presenca_id);
       setIsVerified(true);
       setIsScanning(false);
       return;
     }
 
-    // Caso contrário, registra novo check-in
-    const { error } = await dataService.registerPresence(profile.id, activity.id);
+    // Sem confirmação prévia: insere novo registro já com qr_checkin = true
+    const { error } = await supabase
+      .from('presencas')
+      .insert([{ user_id: profile.id, atividade_id: activity.id, qr_checkin: true }]);
     if (!error) {
       setIsVerified(true);
       setIsScanning(false);

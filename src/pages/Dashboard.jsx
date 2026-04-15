@@ -251,12 +251,14 @@ const Dashboard = () => {
                 >
                   Check-in
                 </button>
-                <button
-                  onClick={handleCancelCheckin}
-                  className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors underline underline-offset-2"
-                >
-                  Cancelar Presença
-                </button>
+                {!activity.qr_checkin && (
+                  <button
+                    onClick={handleCancelCheckin}
+                    className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors underline underline-offset-2"
+                  >
+                    Cancelar Presença
+                  </button>
+                )}
               </div>
             </div>
           </div>
