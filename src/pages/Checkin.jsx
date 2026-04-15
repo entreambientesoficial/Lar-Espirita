@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../context/AuthContext';
 import { dataService, supabase } from '../lib/supabase';
+import { CHECKIN_TOKEN } from '../lib/checkinToken';
 
 const Checkin = () => {
   const { profile } = useAuth();
@@ -57,6 +58,13 @@ const Checkin = () => {
 
     if (!profile || !activity) {
       setError("Nenhuma atividade programada para hoje. Presença não registrada.");
+      setIsScanning(false);
+      return;
+    }
+
+    // Valida o token do QR Code da Casa
+    if (_text !== CHECKIN_TOKEN) {
+      setError("QR Code inválido. Aponte para o QR Code oficial da Casa.");
       setIsScanning(false);
       return;
     }

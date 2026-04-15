@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase, dataService } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { CHECKIN_TOKEN } from '../lib/checkinToken';
 
 export const formatPhone = (value) => {
   if (!value) return '';
@@ -170,6 +172,9 @@ const Admin = () => {
         </button>
         <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
           Reflexão do Dia {activeTab === 'reflexao' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        </button>
+        <button onClick={() => setActiveTab('qrcode')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'qrcode' ? 'text-primary' : 'text-gray-400'}`}>
+          QR Code da Casa {activeTab === 'qrcode' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
       </div>
 
@@ -364,6 +369,57 @@ const Admin = () => {
               </div>
             </div>
           </form>
+        </div>
+      ) : activeTab === 'qrcode' ? (
+        /* QR Code Tab */
+        <div className="flex flex-col items-center gap-8 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-10 border border-gray-100 shadow-sm flex flex-col items-center gap-6 max-w-sm w-full">
+            <div className="space-y-1 text-center">
+              <h3 className="font-headline font-bold text-xl text-primary">QR Code de Presença</h3>
+              <p className="text-gray-500 text-sm">Imprima e fixe em local visível na Casa para os voluntários escanearem.</p>
+            </div>
+
+            <div id="qrcode-print-area" className="bg-white p-6 rounded-2xl border-2 border-gray-100 flex flex-col items-center gap-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Lar Beneficente Eurípedes Barsanulfo</p>
+              <QRCodeSVG
+                value={CHECKIN_TOKEN}
+                size={220}
+                bgColor="#ffffff"
+                fgColor="#1a237e"
+                level="H"
+                marginSize={4}
+              />
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Escaneie para confirmar presença</p>
+            </div>
+
+            <button
+              onClick={() => {
+                const area = document.getElementById('qrcode-print-area').innerHTML;
+                const win = window.open('', '_blank');
+                win.document.title = 'QR Code - Presença';
+                win.document.head.innerHTML = `<style>
+                  body{display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;}
+                  .wrap{text-align:center;padding:40px;border:2px solid #e5e7eb;border-radius:16px;}
+                  p{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.15em;color:#9ca3af;margin:8px 0;}
+                  @media print{body{height:auto;}}
+                </style>`;
+                win.document.body.innerHTML = `<div class="wrap">${area}</div>`;
+                win.onload = () => win.print();
+                win.print();
+              }}
+              className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-lg">print</span>
+              Imprimir QR Code
+            </button>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 max-w-sm w-full flex gap-3">
+            <span className="material-symbols-outlined text-amber-500 text-xl shrink-0">info</span>
+            <p className="text-xs text-amber-800 font-medium leading-relaxed">
+              Este QR Code é único e exclusivo desta Casa. Apenas voluntários com o app instalado conseguem usá-lo para registrar presença.
+            </p>
+          </div>
         </div>
       ) : null}
     </main>
