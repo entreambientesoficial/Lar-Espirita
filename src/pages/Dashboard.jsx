@@ -24,10 +24,8 @@ const COURSE_OPTIONS = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [activity, setActivity] = useState(null);
+  const [activity, setActivity] = useState(null);  // inclui presenca_id se confirmado
   const [loading, setLoading] = useState(true);
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [presencaId, setPresencaId] = useState(null);
 
   // Estados do Questionário de Primeiro Acesso
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
@@ -37,42 +35,24 @@ const Dashboard = () => {
   const [reflection, setReflection] = useState(null);
 
   useEffect(() => {
-    const fetchTodayActivity = async () => {
-      if (profile) {
-        // Se cursos for nulo/vazio, força o cadastro do currículo
-        if (!profile.cursos || profile.cursos.trim() === '') {
-          setShowQuestionnaire(true);
-          setUserPhone(profile.phone || '');
-        }
+    const fetchData = async () => {
+      if (!profile) return;
 
-        const data = await dataService.getTodayActivity(profile.id);
-        setActivity(data);
-
-        // Verifica se o usuário já fez check-in hoje para esta atividade
-        if (data) {
-          const today = new Date();
-          const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-          const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
-          const { data: presenca } = await supabase
-            .from('presencas')
-            .select('id')
-            .eq('user_id', profile.id)
-            .eq('atividade_id', data.id)
-            .gte('checkin_time', startOfDay)
-            .lt('checkin_time', endOfDay)
-            .maybeSingle();
-          setCheckedIn(!!presenca);
-          setPresencaId(presenca?.id ?? null);
-        }
-
-        // Fetch Reflexão Diária
-        const { data: refData } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
-        if (refData) setReflection(refData);
-
-        setLoading(false);
+      if (!profile.cursos || profile.cursos.trim() === '') {
+        setShowQuestionnaire(true);
+        setUserPhone(profile.phone || '');
       }
+
+      // getTodayActivity agora retorna null se não houver confirmação na Agenda
+      const data = await dataService.getTodayActivity(profile.id);
+      setActivity(data);
+
+      const { data: refData } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
+      if (refData) setReflection(refData);
+
+      setLoading(false);
     };
-    fetchTodayActivity();
+    fetchData();
   }, [profile]);
 
   const handleSaveProfile = async (e) => {
@@ -99,12 +79,9 @@ const Dashboard = () => {
   };
 
   const handleCancelCheckin = async () => {
-    if (!presencaId) return;
-    const { error } = await supabase.from('presencas').delete().eq('id', presencaId);
-    if (!error) {
-      setCheckedIn(false);
-      setPresencaId(null);
-    }
+    if (!activity?.presenca_id) return;
+    const { error } = await supabase.from('presencas').delete().eq('id', activity.presenca_id);
+    if (!error) setActivity(null);
   };
 
   if (showQuestionnaire) {
@@ -236,8 +213,8 @@ const Dashboard = () => {
         <div className="flex justify-between items-center px-1">
           <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">Seu Trabalho Hoje</h3>
           {!loading && activity && (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${checkedIn ? 'text-secondary bg-secondary/10' : 'text-primary/50 bg-primary/5'}`}>
-              {checkedIn ? 'Confirmado' : 'Programado'}
+            <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase">
+              Confirmado
             </span>
           )}
         </div>
@@ -265,31 +242,22 @@ const Dashboard = () => {
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
               <div className="flex flex-col">
                 <span className="text-primary font-black text-lg tracking-tight">{activity.time_range}</span>
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                  {checkedIn ? 'Presença Confirmada' : 'Confirmar Presença'}
-                </span>
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Presença Confirmada</span>
               </div>
-              {checkedIn ? (
-                <div className="flex flex-col items-end gap-1">
-                  <span className="flex items-center gap-1.5 text-secondary font-bold text-sm">
-                    <span className="material-symbols-outlined text-base">check_circle</span>
-                    Feito!
-                  </span>
-                  <button
-                    onClick={handleCancelCheckin}
-                    className="text-[10px] text-gray-400 hover:text-red-400 transition-colors underline underline-offset-2"
-                  >
-                    Cancelar presença
-                  </button>
-                </div>
-              ) : (
+              <div className="flex flex-col items-end gap-2">
                 <button
                   onClick={() => navigate('/checkin')}
                   className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
                 >
                   Check-in
                 </button>
-              )}
+                <button
+                  onClick={handleCancelCheckin}
+                  className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors underline underline-offset-2"
+                >
+                  Cancelar Presença
+                </button>
+              </div>
             </div>
           </div>
         ) : (

@@ -18,19 +18,22 @@ export const dataService = {
     return data || [];
   },
 
-  // Buscar atividade de hoje
-  // Consulta direto na tabela atividades pois a tabela escalas pode não ter
-  // registros para todos os voluntários em todos os dias.
-  getTodayActivity: async (_userId) => {
-    const today = new Date().getDay(); // 0 (Dom) a 6 (Sáb)
+  // Buscar atividade confirmada pelo voluntário hoje (via confirmação na Agenda)
+  getTodayActivity: async (userId) => {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
     const { data } = await supabase
-      .from('atividades')
-      .select('*')
-      .eq('day_of_week', today)
+      .from('presencas')
+      .select('id, atividades(*)')
+      .eq('user_id', userId)
+      .gte('checkin_time', startOfDay)
+      .lt('checkin_time', endOfDay)
       .limit(1)
       .maybeSingle();
-
-    return data ?? null;
+    if (!data) return null;
+    // Retorna os dados da atividade + presenca_id para permitir cancelamento
+    return { presenca_id: data.id, ...data.atividades };
   },
 
   // Registrar presença

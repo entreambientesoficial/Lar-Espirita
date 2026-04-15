@@ -61,6 +61,14 @@ const Checkin = () => {
       return;
     }
 
+    // Se o voluntário já confirmou pela Agenda (presenca_id existe), apenas exibe sucesso
+    if (activity.presenca_id) {
+      setIsVerified(true);
+      setIsScanning(false);
+      return;
+    }
+
+    // Caso contrário, registra novo check-in
     const { error } = await dataService.registerPresence(profile.id, activity.id);
     if (!error) {
       setIsVerified(true);
