@@ -41,26 +41,38 @@ const Admin = () => {
   }, []);
 
   const fetchInitialData = async () => {
-    // 1. Buscar confirmações de hoje (com e sem QR check-in)
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-    const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+    // 1. Buscar confirmações de hoje (sem joins — evita falhas silenciosas do PostgREST)
+    const todayStr    = new Date().toISOString().split('T')[0];           // "2026-04-15"
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0]; // "2026-04-16"
 
     const { data: presenceData } = await supabase
       .from('presencas')
-      .select(`id, checkin_time, qr_checkin, profiles ( name ), atividades ( name )`)
-      .gte('checkin_time', startOfDay)
-      .lt('checkin_time', endOfDay)
+      .select('id, checkin_time, qr_checkin, user_id, atividade_id')
+      .gte('checkin_time', todayStr)
+      .lt('checkin_time', tomorrowStr)
       .order('checkin_time', { ascending: true });
 
-    if (presenceData) {
+    if (presenceData && presenceData.length > 0) {
+      const userIds      = [...new Set(presenceData.map(p => p.user_id))];
+      const atividadeIds = [...new Set(presenceData.map(p => p.atividade_id))];
+
+      const [{ data: profilesData }, { data: atividadesData }] = await Promise.all([
+        supabase.from('profiles').select('id, name').in('id', userIds),
+        supabase.from('atividades').select('id, name').in('id', atividadeIds),
+      ]);
+
+      const profileMap   = Object.fromEntries((profilesData  || []).map(p => [p.id, p.name]));
+      const atividadeMap = Object.fromEntries((atividadesData || []).map(a => [a.id, a.name]));
+
       const formatted = presenceData.map(p => ({
         time:       new Date(p.checkin_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        name:       p.profiles?.name || 'Anônimo',
-        activity:   p.atividades?.name || 'Desconhecida',
+        name:       profileMap[p.user_id]        || 'Anônimo',
+        activity:   atividadeMap[p.atividade_id] || 'Desconhecida',
         qr_checkin: p.qr_checkin,
       })).sort((a, b) => a.name.localeCompare(b.name));
       setPresences(formatted);
+    } else {
+      setPresences([]);
     }
 
     // 2. Buscar Usuários Reais e Pré-cadastros
