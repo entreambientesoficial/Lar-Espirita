@@ -29,6 +29,9 @@ dist-ssr
 
 # Scripts locais com credenciais
 setAdmin.js
+
+# Lock file gerado por plataforma (Windows vs Linux)
+package-lock.json
 .env.development.local
 .env.test.local
 .env.production.local
