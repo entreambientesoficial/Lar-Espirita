@@ -41,18 +41,24 @@ const Admin = () => {
   }, []);
 
   const fetchInitialData = async () => {
-    // 1. Buscar Presenças
+    // 1. Buscar confirmações de hoje (com e sem QR check-in)
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+
     const { data: presenceData } = await supabase
       .from('presencas')
-      .select(`id, checkin_time, profiles ( name ), atividades ( name )`)
-      .order('id', { ascending: false });
+      .select(`id, checkin_time, qr_checkin, profiles ( name ), atividades ( name )`)
+      .gte('checkin_time', startOfDay)
+      .lt('checkin_time', endOfDay)
+      .order('checkin_time', { ascending: true });
 
     if (presenceData) {
       const formatted = presenceData.map(p => ({
-        time: new Date(p.checkin_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        name: p.profiles?.name || 'Anônimo',
-        activity: p.atividades?.name || 'Desconhecida',
-        status: 'Presente'
+        time:       new Date(p.checkin_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        name:       p.profiles?.name || 'Anônimo',
+        activity:   p.atividades?.name || 'Desconhecida',
+        qr_checkin: p.qr_checkin,
       })).sort((a, b) => a.name.localeCompare(b.name));
       setPresences(formatted);
     }
@@ -188,8 +194,8 @@ const Admin = () => {
               <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
                 <th className="px-6 py-5 whitespace-nowrap">Médium</th>
                 <th className="px-6 py-5 whitespace-nowrap">Atividade</th>
-                <th className="px-6 py-5 whitespace-nowrap">Hora</th>
-                <th className="px-6 py-5 whitespace-nowrap text-right">Status</th>
+                <th className="px-6 py-5 whitespace-nowrap">Confirmou às</th>
+                <th className="px-6 py-5 whitespace-nowrap text-center">Check-in QR</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -198,8 +204,11 @@ const Admin = () => {
                   <td className="px-6 py-6 font-bold text-primary whitespace-nowrap">{row.name}</td>
                   <td className="px-6 py-6 text-sm text-gray-500 whitespace-nowrap">{row.activity}</td>
                   <td className="px-6 py-6 text-sm font-mono whitespace-nowrap">{row.time}</td>
-                  <td className="px-6 py-6 text-right whitespace-nowrap">
-                    <span className="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-full uppercase">Presente</span>
+                  <td className="px-6 py-6 text-center whitespace-nowrap">
+                    {row.qr_checkin
+                      ? <span className="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-full uppercase">Realizado</span>
+                      : <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-full uppercase">Pendente</span>
+                    }
                   </td>
                 </tr>
               ))}
