@@ -27,6 +27,28 @@ $$;
 ```
 > Esta função **deve existir** no banco. Sem ela, as políticas de admin entram em recursão infinita e ninguém consegue carregar o próprio perfil.
 
+### Trigger de novo usuário (OBRIGATÓRIA):
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, name, email, role, phone)
+  SELECT
+    new.id,
+    COALESCE(pc.name, split_part(new.email, '@', 1)),
+    new.email,
+    COALESCE(pc.role, 'volunteer'),
+    pc.phone
+  FROM public.pre_cadastros pc
+  WHERE lower(pc.email) = lower(new.email)
+  LIMIT 1;
+  RETURN new;
+END;
+$$;
+```
+> Usa `INSERT...SELECT` com `lower()` — se o e-mail não estiver em `pre_cadastros`, não insere nada (sem exceção). A política de INSERT em `profiles` deve ser `WITH CHECK (true)` para não bloquear esta trigger SECURITY DEFINER.
+
 ### Tabelas Atuais:
 
 *   `profiles`: Perfis de usuários. Colunas: `id` (uuid), `name`, `email`, `role` (`admin` | `volunteer`), `phone`, `cursos`.
@@ -43,7 +65,7 @@ $$;
 **profiles:**
 - SELECT: `auth.uid() = id OR is_admin()`
 - UPDATE: `auth.uid() = id OR is_admin()`
-- INSERT: `auth.uid() = id`
+- INSERT: `WITH CHECK (true)` — necessário para a trigger SECURITY DEFINER funcionar
 
 **presencas:**
 - SELECT: `user_id = auth.uid() OR is_admin()`
@@ -111,4 +133,4 @@ O fluxo correto é em **dois passos**:
 
 ---
 *Status atualizado por: Inteligência Artificial (Claude Sonnet 4.6).*
-*Fase atual: **V 1.2 — Fluxo de Presença em Dois Passos + QR Code da Casa**.*
+*Fase atual: **V 1.3 — Login multi-usuário validado em produção**.*
