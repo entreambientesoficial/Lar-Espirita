@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,13 +38,22 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    
-    if (data) setProfile(data);
+
+    if (data) {
+      setProfile(data);
+      setAuthError(null);
+    } else {
+      // Sessão existe mas não há perfil = e-mail não está no pré-cadastro
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+      setAuthError('E-mail não autorizado. Solicite acesso à administração da Casa.');
+    }
     setLoading(false);
   };
 
@@ -87,10 +97,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      session, profile, loading, 
+    <AuthContext.Provider value={{
+      session, profile, loading, authError,
       signInWithGoogle, signUpWithEmail, signInWithEmail, sendPasswordReset,
-      signOut 
+      signOut
     }}>
       {children}
     </AuthContext.Provider>

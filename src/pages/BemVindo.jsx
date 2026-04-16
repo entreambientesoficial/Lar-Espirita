@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const BemVindo = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, session } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, session, authError } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [isReset, setIsReset] = useState(false);
@@ -117,6 +117,12 @@ const BemVindo = () => {
                 </div>
               )}
             </div>
+
+            {authError && (
+              <p className="text-center text-xs font-bold p-3 rounded-xl shadow-sm bg-red-500 text-white">
+                {authError}
+              </p>
+            )}
 
             {message.text && (
               <p className={`text-center text-xs font-bold p-3 rounded-xl shadow-sm ${message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
