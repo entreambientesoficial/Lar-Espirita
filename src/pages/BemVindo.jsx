@@ -76,9 +76,9 @@ const BemVindo = () => {
         <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
           
           {!isReset && (
-            <button 
+            <button
               onClick={signInWithGoogle}
-              className="w-full bg-white text-on-surface py-3.5 rounded-2xl font-bold flex items-center justify-center gap-4 shadow-xl border border-gray-100 hover:bg-gray-50 active:scale-[0.98] transition-all"
+              className="w-full bg-white text-on-surface py-3.5 rounded-2xl font-bold flex items-center justify-center gap-4 shadow-xl border border-gray-100 hover:bg-blue-50 hover:border-blue-200 hover:shadow-blue-100 active:scale-95 active:bg-blue-100 active:shadow-inner transition-all duration-150"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
               <span className="text-sm">Entrar com Google</span>

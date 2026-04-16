@@ -6,7 +6,7 @@
 *   **Nome do Projeto:** APP-CENTROESPIRITA (Portal do Voluntário)
 *   **Casa:** Lar Beneficente Eurípedes Barsanulfo
 *   **Tech Stack:** React 18 (Vite), Tailwind CSS v4, Supabase (Autenticação + Banco de Dados), React Router DOM v7, qrcode.react.
-*   **Propósito:** Sistema web (PWA-like) para controle de escala, presença, formação e comunicação de voluntários de uma Casa Espírita.
+*   **Propósito:** Sistema web (PWA instalável) para controle de escala, presença, formação e comunicação de voluntários de uma Casa Espírita.
 *   **Deploy:** Cloudflare Pages — URL: `https://larbeneficienteeuripedesbarsanulfo.pages.dev`
 *   **Ambiente local:** `npm run dev` na porta 5175. Node.js >= 20 obrigatório.
 *   **Build:** `npm run build` → pasta `dist/`. Code splitting: vendor-react, vendor-supabase, vendor-qrcode (html5-qrcode + qrcode.react).
@@ -93,9 +93,9 @@ O fluxo correto é em **dois passos**:
 ## 4. Páginas e Funcionalidades
 
 ### Acesso Geral (Voluntários)
-*   **`BemVindo.jsx`**: Tela de Login via Google OAuth (restrito a e-mails em `pre_cadastros`).
+*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Fundo com imagem `tela-login.png`. Botão Google com feedback visual de clique.
 *   **`Layout.jsx`**: Navbar inferior flutuante. Esconde abas de Admin para `role = volunteer`.
-*   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (cursos/telefone) no primeiro acesso.
+*   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (cursos/telefone) no primeiro acesso. Banner de instalação PWA (Android/Chrome).
 *   **`Agenda.jsx`**: Agenda semanal (Seg–Sáb). Para o dia atual: botão "Confirmar Presença" funcional (insere em `presencas`) ou "Confirmado ✓ + Cancelar". Para outros dias: aviso "Confirmação disponível no dia".
 *   **`Checkin.jsx`**: Scanner de QR Code. Valida o token `LBEB-PRESENCA-2026`. Se já confirmou pela Agenda, apenas marca `qr_checkin = true`. Se não confirmou, insere novo registro com `qr_checkin = true`. QR Code inválido exibe erro.
 *   **`Messages.jsx` (Mural)**: Chat em tempo real via Supabase Realtime. Admins podem enviar "Comunicados Oficiais" (broadcast).
@@ -107,15 +107,26 @@ O fluxo correto é em **dois passos**:
     3. **Reflexão do Dia**: Live preview. Altera frase e imagem espiritual em tempo real.
     4. **QR Code da Casa**: Exibe e permite imprimir o QR Code oficial para afixar na Casa.
 
-## 5. Como Manusear o Código
+## 5. PWA (Progressive Web App)
+
+O app é instalável como PWA em dispositivos móveis.
+
+*   **`public/manifest.json`**: Manifesto com nome, ícones, `display: standalone`, `theme_color: #1a237e`.
+*   **`public/sw.js`**: Service Worker mínimo — habilita instalação, passa requisições direto para a rede (sem cache offline).
+*   **`index.html`**: Tags `<link rel="manifest">`, `theme-color`, `apple-mobile-web-app-*` e `apple-touch-icon` configuradas.
+*   **`src/main.jsx`**: Registra o service worker via `navigator.serviceWorker.register('/sw.js')`.
+*   **Banner de instalação (Dashboard)**: Captura o evento `beforeinstallprompt` e exibe banner com botão "Instalar" ao usuário. Funciona em Android (Chrome/Edge). No iOS (Safari) o usuário deve usar "Compartilhar → Adicionar à Tela de Início" manualmente.
+
+## 6. Como Manusear o Código
 *   **Design Pattern:** Single-File-Components por rota.
 *   **Segurança de Sessão:** Proteção global no `<Layout>` (redireciona se sessão expirar). `<ProtectedRoute>` verifica `role === 'admin'`.
 *   **RLS:** Camada server-side no Supabase. A função `is_admin()` (SECURITY DEFINER) é usada nas políticas para evitar recursão.
 *   **Token QR:** Definido em `src/lib/checkinToken.js`. Compartilhado entre `Checkin.jsx` (validação) e `Admin.jsx` (geração do QR Code).
 *   **ErrorBoundary:** Implementado em `main.jsx`. Crashes exibem tela amigável com botão de recarregar.
 *   **Aparência:** Glassmorphism sutil, fontes `Plus Jakarta Sans` / `Manrope` via Google Fonts, ícones Material Symbols Outlined.
+*   **Imagens estáticas:** Devem estar em `public/img-apoio/`. Arquivos fora de `public/` não são servidos pelo Vite.
 
-## 6. Configuração de Deploy (Cloudflare Pages)
+## 7. Configuração de Deploy (Cloudflare Pages)
 
 | Configuração | Valor |
 |---|---|
@@ -131,6 +142,29 @@ O fluxo correto é em **dois passos**:
 
 > `package-lock.json` está no `.gitignore` — gerado localmente no Windows causa falha de build no Linux (Cloudflare). Nunca commitar o lock file.
 
+## 8. Roadmap — Módulo Lanchonete (planejado)
+
+Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Acesso restrito por role dedicado (`lanchonete`), visível apenas para usuários com essa role e admins.
+
+### Funcionalidades previstas (por prioridade):
+
+1. **Cardápio/Produtos** — Cadastro de itens com nome e preço.
+2. **Registro de Vendas** — Tela operacional (uso diário da responsável): seleciona produtos, define quantidade, registra venda. Funciona como um "carrinho" que vai acumulando durante o turno.
+3. **Fechamento de Caixa** — Resumo do dia: total vendido, lista de vendas, valor esperado em caixa. Acessível também pelo Admin.
+4. **Estoque** *(V2)* — Controle de quantidade disponível por item, alerta de estoque baixo.
+5. **Relatórios** *(V2)* — Vendas por período, produto mais vendido.
+
+### Banco de dados previsto:
+*   `lanche_produtos`: `id`, `name`, `price`, `active` (boolean)
+*   `lanche_vendas`: `id`, `user_id` (FK→profiles), `created_at`, `total`
+*   `lanche_itens_venda`: `id`, `venda_id` (FK→lanche_vendas), `produto_id` (FK→lanche_produtos), `quantidade`, `preco_unitario`
+*   `lanche_estoque` *(V2)*: `produto_id`, `quantidade`
+
+### Controle de acesso:
+*   Novo role `lanchonete` em `profiles.role` (além de `admin` e `volunteer`)
+*   Aba "Lanchonete" no menu visível apenas para `role = lanchonete` ou `role = admin`
+*   RLS aplicado nas tabelas `lanche_*`
+
 ---
 *Status atualizado por: Inteligência Artificial (Claude Sonnet 4.6).*
-*Fase atual: **V 1.3 — Login multi-usuário validado em produção**.*
+*Fase atual: **V 1.4 — PWA instalável + imagem de fundo da tela de login**.*

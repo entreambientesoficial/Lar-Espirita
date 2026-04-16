@@ -1,0 +1,25 @@
+{
+  "name": "Portal do Voluntário - Lar Beneficente Eurípedes Barsanulfo",
+  "short_name": "Portal Voluntário",
+  "description": "Portal do Voluntário da Casa Espírita",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1a237e",
+  "icons": [
+    {
+      "src": "/img-apoio/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img-apoio/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

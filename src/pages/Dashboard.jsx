@@ -26,6 +26,29 @@ const Dashboard = () => {
   const { profile } = useAuth();
   const [activity, setActivity] = useState(null);  // inclui presenca_id se confirmado
   const [loading, setLoading] = useState(true);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  // Captura o evento de instalação PWA
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setInstallPrompt(null);
+    }
+  };
 
   // Estados do Questionário de Primeiro Acesso
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
@@ -182,6 +205,36 @@ const Dashboard = () => {
 
   return (
     <main className="max-w-md mx-auto px-6 py-8 space-y-10 font-body">
+
+      {/* Banner de Instalação PWA */}
+      {showInstallBanner && (
+        <section className="animate-in slide-in-from-top-4 duration-500">
+          <div className="bg-primary text-white rounded-3xl p-5 flex items-center gap-4 shadow-2xl shadow-primary/30">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-2xl">install_mobile</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm leading-tight">Instalar no Celular</p>
+              <p className="text-white/70 text-xs mt-0.5 leading-tight">Acesse sem precisar abrir o navegador</p>
+            </div>
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <button
+                onClick={handleInstallApp}
+                className="bg-white text-primary font-black text-xs px-4 py-2 rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-sm"
+              >
+                Instalar
+              </button>
+              <button
+                onClick={() => setShowInstallBanner(false)}
+                className="text-white/50 text-[10px] font-bold text-center hover:text-white/80 transition-colors"
+              >
+                Agora não
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Header: User Profile Summary */}
       <section className="flex justify-between items-start animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="space-y-1">
