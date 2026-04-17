@@ -8,6 +8,7 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isBroadcast, setIsBroadcast] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const scrollRef = useRef(null);
 
   const fetchMessages = async () => {
@@ -26,6 +27,9 @@ const Messages = () => {
     const channel = supabase
       .channel('messages-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, () => {
+        fetchMessages();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'mensagens' }, () => {
         fetchMessages();
       })
       .subscribe();
@@ -57,6 +61,12 @@ const Messages = () => {
     setSending(false);
   };
 
+  const handleDeleteMessage = async (msgId) => {
+    setDeletingId(msgId);
+    await supabase.from('mensagens').delete().eq('id', msgId);
+    setDeletingId(null);
+  };
+
   const formatTime = (isoString) => {
     return new Date(isoString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
@@ -84,40 +94,73 @@ const Messages = () => {
             const isMe = msg.profiles.id === profile.id;
             const isAlert = msg.is_broadcast;
 
+            const canDelete = isMe || profile?.role === 'admin';
+
             if (isAlert) {
               return (
-                <div key={msg.id} className="w-full flex justify-center animate-in slide-in-from-bottom-2 fade-in">
-                  <div className="bg-primary/10 border-2 border-primary/20 w-full max-w-lg rounded-2xl p-6 text-center shadow-lg shadow-primary/5">
+                <div key={msg.id} className="w-full flex justify-center animate-in slide-in-from-bottom-2 fade-in group/alert">
+                  <div className="relative bg-primary/10 border-2 border-primary/20 w-full max-w-lg rounded-2xl p-6 text-center shadow-lg shadow-primary/5">
                     <div className="flex items-center justify-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] mb-3">
-                      <span className="material-symbols-outlined text-sm">campaign</span> 
+                      <span className="material-symbols-outlined text-sm">campaign</span>
                       Comunicado Oficial
                     </div>
                     <p className="text-primary font-medium text-lg leading-relaxed">{msg.content}</p>
                     <div className="mt-4 text-[10px] text-primary/60 font-bold uppercase">Enviado por: {msg.profiles.name} às {formatTime(msg.created_at)}</div>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        disabled={deletingId === msg.id}
+                        className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-primary/30 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover/alert:opacity-100 transition-all disabled:opacity-50"
+                        title="Apagar mensagem"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
             }
 
             return (
-              <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 fade-in`}>
+              <div key={msg.id} className={`flex w-full items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 fade-in group/msg`}>
+                {/* Lixeira à esquerda para mensagens minhas */}
+                {isMe && canDelete && (
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    disabled={deletingId === msg.id}
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover/msg:opacity-100 transition-all disabled:opacity-50 mb-4"
+                    title="Apagar mensagem"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                  </button>
+                )}
+
                 <div className={`flex flex-col max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
-                  {/* Sender Name */}
                   <span className="text-[10px] font-bold text-gray-400 mb-1 px-1 flex items-center gap-1 uppercase tracking-wider">
-                    {msg.profiles.name} 
+                    {msg.profiles.name}
                     {msg.profiles.role === 'admin' && <span className="material-symbols-outlined text-[10px] text-primary/60" title="Gestor">verified</span>}
                   </span>
-                  
-                  {/* Bubble */}
                   <div className={`px-5 py-3 rounded-2xl text-sm ${
-                    isMe 
-                    ? 'bg-primary text-white rounded-br-sm shadow-md shadow-primary/10' 
+                    isMe
+                    ? 'bg-primary text-white rounded-br-sm shadow-md shadow-primary/10'
                     : 'bg-gray-100 text-gray-700 rounded-bl-sm border border-gray-200'
                   }`}>
                     {msg.content}
                   </div>
                   <span className="text-[9px] text-gray-300 mt-1 px-1 font-mono">{formatTime(msg.created_at)}</span>
                 </div>
+
+                {/* Lixeira à direita para mensagens de outros (só admin) */}
+                {!isMe && canDelete && (
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    disabled={deletingId === msg.id}
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover/msg:opacity-100 transition-all disabled:opacity-50 mb-4"
+                    title="Apagar mensagem"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                  </button>
+                )}
               </div>
             );
           })

@@ -330,24 +330,20 @@ const Dashboard = () => {
       <section className="space-y-4 pt-4 animate-in slide-in-from-bottom-8 duration-1000 delay-300">
         <h3 className="text-2xl font-extrabold text-primary font-headline tracking-tight px-1">Reflexão do Dia</h3>
         
-        <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 flex flex-col group">
-          <div className="overflow-hidden h-48">
-            <img
-              src={reflection?.image_url || "/img-apoio/caridade.png"}
-              alt="Reflexão"
-              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-              onError={(e) => { e.target.onerror = null; e.target.src = '/img-apoio/caridade.png'; }}
-            />
-          </div>
-          <div className="p-8 space-y-4 bg-primary/5">
-            <blockquote className="space-y-3">
-              <p className="text-primary text-xl font-medium leading-relaxed italic">
-                "{reflection?.quote || 'Fora da caridade não há salvação.'}"
-              </p>
-              <cite className="text-primary/60 text-xs font-black uppercase tracking-widest block not-italic">— {reflection?.author || 'Allan Kardec'}</cite>
-            </blockquote>
-          </div>
+        <div className="group rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+          <img
+            src={reflection?.image_url || "/img-apoio/caridade.png"}
+            alt="Reflexão"
+            className="w-full h-56 object-cover transition-transform duration-1000 group-hover:scale-105"
+            onError={(e) => { e.target.onerror = null; e.target.src = '/img-apoio/caridade.png'; }}
+          />
         </div>
+        <blockquote className="px-1 space-y-2">
+          <p className="text-primary text-xl font-medium leading-relaxed italic">
+            "{reflection?.quote || 'Fora da caridade não há salvação.'}"
+          </p>
+          <cite className="text-primary/60 text-xs font-black uppercase tracking-widest block not-italic">— {reflection?.author || 'Allan Kardec'}</cite>
+        </blockquote>
       </section>
     </main>
   );
