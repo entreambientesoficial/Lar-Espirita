@@ -54,6 +54,7 @@ const Admin = () => {
   const [actDayOfWeek, setActDayOfWeek] = useState(2); // Terça
   const [isExtraForm, setIsExtraForm] = useState(true);
   const [savingActivity, setSavingActivity] = useState(false);
+  const [showInactiveActivities, setShowInactiveActivities] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -320,7 +321,7 @@ const Admin = () => {
           Médiuns e Gestores {activeTab === 'usuarios' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
         <button onClick={() => setActiveTab('agenda')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'agenda' ? 'text-primary' : 'text-gray-400'}`}>
-          Agenda e Escala {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+          Agenda {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
         <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
           Reflexão do Dia {activeTab === 'reflexao' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
@@ -471,7 +472,7 @@ const Admin = () => {
           <div className="bg-primary/5 p-8 rounded-3xl border border-primary/10 space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h4 className="font-headline font-bold text-lg text-primary">
-                {editingActivity ? `Editando: ${editingActivity.name}` : 'Cadastrar Novo Atendimento'}
+                {editingActivity ? `Editando: ${editingActivity.name}` : 'Cadastrar Atendimento'}
               </h4>
               
               {!editingActivity && (
@@ -585,10 +586,22 @@ const Admin = () => {
 
           {/* Section: Atendimentos Regulares */}
           <div className="space-y-4">
-            <h4 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">event_repeat</span>
-              Atividades Regulares (Semanais)
-            </h4>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <h4 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">event_repeat</span>
+                Atividades Regulares (Semanais)
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowInactiveActivities(prev => !prev)}
+                className="text-xs font-bold text-gray-500 hover:text-primary transition-colors flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {showInactiveActivities ? 'visibility_off' : 'visibility'}
+                </span>
+                {showInactiveActivities ? 'Ocultar atividades inativas' : 'Mostrar atividades inativas'}
+              </button>
+            </div>
 
             <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
               <table className="w-full text-left min-w-[650px]">
@@ -602,7 +615,10 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {adminActivities.filter(a => !a.event_date).map((item) => (
+                  {adminActivities
+                    .filter(a => !a.event_date)
+                    .filter(a => showInactiveActivities || a.active !== false)
+                    .map((item) => (
                     <tr key={item.id} className={`hover:bg-gray-50/30 ${item.active === false ? 'opacity-50 bg-gray-50/50' : ''}`}>
                       <td className="px-6 py-4 font-bold text-primary">{item.name}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-600">
