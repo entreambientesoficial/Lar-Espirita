@@ -102,7 +102,7 @@ const Admin = () => {
       name: actName.trim(),
       start_time: actStartTime ? `${actStartTime}:00` : null,
       end_time: actEndTime ? `${actEndTime}:00` : null,
-      time_range: `${actStartTime} – ${actEndTime}`,
+      time_range: `${actStartTime} - ${actEndTime}`,
       description: actDescription.trim() || 'Atendimento de Apometria e apoio espiritual.',
       day_of_week: dow,
       event_date: isExtraForm ? (actDate || null) : null,
@@ -609,7 +609,7 @@ const Admin = () => {
                         {DAY_NAMES[item.day_of_week] || 'Não definido'}
                       </td>
                       <td className="px-6 py-4 text-sm font-mono text-gray-700">
-                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} às ${item.end_time.slice(0,5)}` : item.time_range}
+                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} - ${item.end_time.slice(0,5)}` : (item.time_range ? item.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '')}
                       </td>
                       <td className="px-6 py-4">
                         {item.active !== false ? (
@@ -672,7 +672,7 @@ const Admin = () => {
                       <td className="px-6 py-4 text-sm font-bold text-secondary">{item.event_date}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{DAY_NAMES[item.day_of_week]}</td>
                       <td className="px-6 py-4 text-sm font-mono text-gray-700">
-                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} às ${item.end_time.slice(0,5)}` : item.time_range}
+                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} - ${item.end_time.slice(0,5)}` : (item.time_range ? item.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '')}
                       </td>
                       <td className="px-6 py-4">
                         {item.active !== false ? (

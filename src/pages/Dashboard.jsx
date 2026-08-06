@@ -313,7 +313,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
               <div className="flex flex-col">
                 <span className="text-primary font-black text-lg tracking-tight">
-                  {activity.start_time && activity.end_time ? `${activity.start_time.slice(0, 5)} às ${activity.end_time.slice(0, 5)}` : activity.time_range}
+                  {activity.start_time && activity.end_time ? `${activity.start_time.slice(0, 5)} - ${activity.end_time.slice(0, 5)}` : (activity.time_range ? activity.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '')}
                 </span>
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Presença Confirmada</span>
               </div>

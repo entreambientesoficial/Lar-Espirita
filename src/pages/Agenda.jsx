@@ -81,7 +81,9 @@ const Agenda = () => {
 
   const getDayDate = (dayIndex) => {
     const today = new Date();
-    const diff = dayIndex - today.getDay();
+    const currentDay = today.getDay() === 0 ? 7 : today.getDay();
+    const targetDay = dayIndex === 0 ? 7 : dayIndex;
+    const diff = targetDay - currentDay;
     const target = new Date(today);
     target.setDate(today.getDate() + diff);
     const year = target.getFullYear();
@@ -107,9 +109,9 @@ const Agenda = () => {
 
   const formatTime = (item) => {
     if (item.start_time && item.end_time) {
-      return `${item.start_time.slice(0, 5)} às ${item.end_time.slice(0, 5)}`;
+      return `${item.start_time.slice(0, 5)} - ${item.end_time.slice(0, 5)}`;
     }
-    return item.time_range;
+    return item.time_range ? item.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '';
   };
 
   return (
