@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequestUrgentBump }) => {
   const { profile } = useAuth();
   const [capacidades, setCapacidades] = useState([]);
+  const [programacoes, setProgramacoes] = useState([]);
   const [selectedAtividade, setSelectedAtividade] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [observacoes, setObservacoes] = useState('');
@@ -13,24 +14,23 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
 
   useEffect(() => {
     if (isOpen) {
-      loadAtividades();
-      // Sugere a próxima terça, quarta ou quinta feira
+      loadData();
       const defaultDate = getNextServiceDate();
       setEventDate(defaultDate);
+      setSelectedAtividade('');
       setObservacoes('');
       setErrorMsg('');
     }
   }, [isOpen]);
 
-  const loadAtividades = async () => {
+  const loadData = async () => {
     try {
-      const list = await atendimentoService.getCapacidades();
-      setCapacidades(list);
-      if (list && list.length > 0) {
-        setSelectedAtividade(list[0].id);
-      }
+      const caps = await atendimentoService.getCapacidades();
+      setCapacidades(caps || []);
+      const progs = await atendimentoService.getAllProgramacoes();
+      setProgramacoes(progs || []);
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao carregar sessões e agendamentos:', err);
     }
   };
 
@@ -46,12 +46,70 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
     return `${year}-${month}-${day}`;
   };
 
+  /**
+   * Filtra as sessões válidas para a data selecionada usando data local e calcula vagas restantes
+   */
+  const getSessoesDisponiveisParaData = (dataStr) => {
+    if (!dataStr) return [];
+    const parts = dataStr.split('-');
+    if (parts.length !== 3) return [];
+
+    const [year, month, day] = parts.map(Number);
+    // Cria objeto Date em fuso horário local (evita deslocamento UTC)
+    const localDate = new Date(year, month - 1, day);
+    const targetDow = localDate.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua...
+
+    const filtered = capacidades.filter(a => {
+      if (a.active === false) return false;
+
+      // 1. Atividade regular: event_date IS NULL e day_of_week igual ao dia da semana da data
+      if (a.event_date === null || a.event_date === undefined) {
+        return Number(a.day_of_week) === targetDow;
+      }
+
+      // 2. Atendimento extra: event_date exatamente igual à data selecionada
+      return a.event_date === dataStr;
+    });
+
+    // Calcula vagas reais restantes (capacidade configurada - programações ativas na data)
+    const withVagas = filtered.map(a => {
+      const capMax = a.capacidade || 9;
+      const ocupados = (programacoes || []).filter(p =>
+        p.atividade_id === a.id &&
+        p.event_date === dataStr &&
+        ['programado', 'compareceu'].includes(p.status)
+      ).length;
+
+      const vagasRestantes = Math.max(0, capMax - ocupados);
+
+      return {
+        ...a,
+        capMax,
+        ocupados,
+        vagasRestantes,
+      };
+    });
+
+    // Ordenar por start_time crescente
+    withVagas.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
+    return withVagas;
+  };
+
   if (!isOpen || !person) return null;
+
+  const sessoesDisponiveis = getSessoesDisponiveisParaData(eventDate);
+  const selectedActivityObj = sessoesDisponiveis.find(a => a.id === selectedAtividade);
 
   const handleProgramar = async (e) => {
     e.preventDefault();
-    if (!selectedAtividade || !eventDate) {
-      setErrorMsg('Selecione o atendimento e a data desejada.');
+    if (!eventDate || !selectedAtividade) {
+      setErrorMsg('Selecione a data e a sessão de atendimento.');
+      return;
+    }
+
+    const atividade = sessoesDisponiveis.find(a => a.id === selectedAtividade);
+    if (!atividade) {
+      setErrorMsg('A sessão selecionada não é válida para a data informada. Por favor, selecione uma opção da lista.');
       return;
     }
 
@@ -59,19 +117,18 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
     setErrorMsg('');
 
     try {
-      const atividade = capacidades.find(a => a.id === selectedAtividade);
       const result = await atendimentoService.programarAtendimento({
         pessoaId: person.id,
         atividadeId: selectedAtividade,
         eventDate,
-        startTime: atividade?.start_time || '13:30:00',
-        endTime: atividade?.end_time || '16:30:00',
+        startTime: atividade.start_time || '13:30:00',
+        endTime: atividade.end_time || '16:30:00',
         observacoes,
       });
 
       if (result.overCapacity) {
         setLoading(false);
-        // Chama o callback para abrir o modal de confirmação de urgência
+        // Chama callback para abrir confirmação de desencaixe/urgência
         onRequestUrgentBump({
           person,
           atividade,
@@ -83,7 +140,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
         return;
       }
 
-      onProgrammed(`Atendimento programado com sucesso para ${eventDate}!`);
+      onProgrammed(`Atendimento programado com sucesso para ${eventDate.split('-').reverse().join('/')}!`);
       onClose();
     } catch (err) {
       setErrorMsg(err.message || 'Erro ao programar atendimento.');
@@ -91,8 +148,6 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
       setLoading(false);
     }
   };
-
-  const selectedActivityObj = capacidades.find(a => a.id === selectedAtividade);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
@@ -104,7 +159,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
             </div>
             <div>
               <h3 className="font-headline font-bold text-lg text-primary">Programar Atendimento</h3>
-              <p className="text-xs text-gray-400">Selecione o trabalho e a data para {person.nome}.</p>
+              <p className="text-xs text-gray-400">Selecione a data e o trabalho para {person.nome}.</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -120,24 +175,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
         )}
 
         <form onSubmit={handleProgramar} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-              Atendimento / Sessão *
-            </label>
-            <select
-              value={selectedAtividade}
-              onChange={e => setSelectedAtividade(e.target.value)}
-              required
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
-            >
-              {capacidades.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.start_time ? item.start_time.slice(0, 5) : item.time_range}) - Vagas: {item.capacidade}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          {/* Campo 1: Data do Atendimento */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
               Data do Atendimento *
@@ -145,17 +183,51 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
             <input
               type="date"
               value={eventDate}
-              onChange={e => setEventDate(e.target.value)}
+              onChange={e => {
+                setEventDate(e.target.value);
+                setSelectedAtividade(''); // Limpa imediatamente a sessão ao alterar a data
+              }}
               required
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
             />
           </div>
 
+          {/* Campo 2: Atendimento / Sessão */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+              Atendimento / Sessão *
+            </label>
+            <select
+              value={selectedAtividade}
+              onChange={e => setSelectedAtividade(e.target.value)}
+              disabled={!eventDate}
+              required
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">
+                {!eventDate ? 'Selecione primeiro a data...' : 'Selecione uma sessão...'}
+              </option>
+              {sessoesDisponiveis.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.name} — {item.start_time ? item.start_time.slice(0, 5) : ''}
+                  {item.end_time ? ` - ${item.end_time.slice(0, 5)}` : ''} — {item.vagasRestantes} {item.vagasRestantes === 1 ? 'vaga disponível' : 'vagas disponíveis'}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {selectedActivityObj && (
-            <div className="bg-primary/5 p-3 rounded-2xl text-xs text-primary font-medium flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">info</span>
-              <span>
-                Capacidade configurada: <strong>{selectedActivityObj.capacidade} vagas</strong> nesta sessão.
+            <div className="bg-primary/5 p-3 rounded-2xl text-xs text-primary font-medium flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">info</span>
+                <span>
+                  Capacidade configurada: <strong>{selectedActivityObj.capMax} vagas</strong>
+                </span>
+              </div>
+              <span className={`px-2.5 py-1 rounded-full font-bold text-[11px] ${
+                selectedActivityObj.vagasRestantes > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {selectedActivityObj.vagasRestantes} {selectedActivityObj.vagasRestantes === 1 ? 'vaga disponível' : 'vagas disponíveis'}
               </span>
             </div>
           )}
@@ -183,7 +255,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !eventDate || !selectedAtividade}
               className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
             >
               {loading ? 'Programando...' : 'Confirmar Programação'}
