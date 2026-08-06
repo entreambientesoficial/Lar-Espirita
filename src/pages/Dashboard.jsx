@@ -55,7 +55,11 @@ const Dashboard = () => {
   const [userPhone, setUserPhone] = useState('');
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Estados da Reflexão do Dia
   const [reflection, setReflection] = useState(null);
+  const [loadingReflection, setLoadingReflection] = useState(true);
+  const [reflectionError, setReflectionError] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,11 +73,25 @@ const Dashboard = () => {
       // getTodayActivity agora retorna null se não houver confirmação na Agenda
       const data = await dataService.getTodayActivity(profile.id);
       setActivity(data);
-
-      const { data: refData } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
-      if (refData) setReflection(refData);
-
       setLoading(false);
+
+      // Carregar reflexão do dia
+      try {
+        setLoadingReflection(true);
+        setReflectionError(false);
+        const { data: refData, error: refErr } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
+        if (refErr) throw refErr;
+        if (refData) {
+          setReflection(refData);
+        } else {
+          setReflectionError(true);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar a reflexão do dia:", err);
+        setReflectionError(true);
+      } finally {
+        setLoadingReflection(false);
+      }
     };
     fetchData();
   }, [profile]);
@@ -330,20 +348,42 @@ const Dashboard = () => {
       <section className="space-y-4 pt-4 animate-in slide-in-from-bottom-8 duration-1000 delay-300">
         <h3 className="text-2xl font-extrabold text-primary font-headline tracking-tight px-1">Reflexão do Dia</h3>
         
-        <div className="group rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-          <img
-            src={reflection?.image_url || "/img-apoio/caridade.png"}
-            alt="Reflexão"
-            className="w-full h-56 object-cover transition-transform duration-1000 group-hover:scale-105"
-            onError={(e) => { e.target.onerror = null; e.target.src = '/img-apoio/caridade.png'; }}
-          />
-        </div>
-        <blockquote className="px-1 space-y-2">
-          <p className="text-primary text-xl font-medium leading-relaxed italic">
-            "{reflection?.quote || 'Fora da caridade não há salvação.'}"
-          </p>
-          <cite className="text-primary/60 text-xs font-black uppercase tracking-widest block not-italic">— {reflection?.author || 'Allan Kardec'}</cite>
-        </blockquote>
+        {loadingReflection ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="w-full h-56 bg-gray-200/60 rounded-3xl"></div>
+            <div className="space-y-2 px-1">
+              <div className="h-6 bg-gray-200/60 rounded-xl w-3/4"></div>
+              <div className="h-4 bg-gray-200/60 rounded-xl w-1/4"></div>
+            </div>
+          </div>
+        ) : reflectionError || !reflection ? (
+          <div className="bg-gray-50 border border-gray-100 rounded-3xl p-6 text-center text-gray-400 text-sm font-medium">
+            Não foi possível carregar a reflexão do dia.
+          </div>
+        ) : (
+          <>
+            {reflection.image_url && (
+              <div className="group rounded-3xl overflow-hidden shadow-sm border border-gray-100">
+                <img
+                  src={reflection.image_url}
+                  alt="Reflexão"
+                  className="w-full h-56 object-cover transition-transform duration-1000 group-hover:scale-105"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
+            <blockquote className="px-1 space-y-2">
+              {reflection.quote && (
+                <p className="text-primary text-xl font-medium leading-relaxed italic">
+                  "{reflection.quote}"
+                </p>
+              )}
+              {reflection.author && (
+                <cite className="text-primary/60 text-xs font-black uppercase tracking-widest block not-italic">— {reflection.author}</cite>
+              )}
+            </blockquote>
+          </>
+        )}
       </section>
     </main>
   );
