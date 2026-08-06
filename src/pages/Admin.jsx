@@ -27,6 +27,13 @@ const DAY_NAMES = {
   6: 'Sábado'
 };
 
+export const ROLE_LABELS = {
+  volunteer: 'Médium',
+  admin: 'Administrador',
+  manager: 'Gestor',
+  lanchonete: 'Lanchonete',
+};
+
 const Admin = () => {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('presenca');
@@ -34,6 +41,17 @@ const Admin = () => {
   const [presences, setPresences] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtros da aba Médiuns e Gestores
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [searchUser, setSearchUser] = useState('');
+
+  // Modal de confirmação interno para ativar/desativar
+  const [confirmActiveModal, setConfirmActiveModal] = useState({
+    isOpen: false,
+    user: null,
+  });
 
   // Estados para novo pré-cadastro
   const [newName, setNewName] = useState('');
@@ -313,7 +331,7 @@ const Admin = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert("Convite copiado!");
+    showToast("Convite copiado com sucesso para a área de transferência!", "success");
     setInviteMsg('');
   };
 
@@ -323,14 +341,46 @@ const Admin = () => {
     if (currentRole === 'admin') {
       const adminCount = users.filter(u => u.role === 'admin').length;
       if (adminCount <= 1) {
-        alert('Não é possível remover o único administrador do sistema.');
+        showToast('Não é possível remover o único administrador do sistema.', 'error');
         return;
       }
     }
 
     const newRole = currentRole === 'admin' ? 'volunteer' : 'admin';
     await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    showToast('Nível de acesso atualizado com sucesso!', 'success');
     fetchInitialData();
+  };
+
+  const handleConfirmToggleActive = async () => {
+    if (!confirmActiveModal.user) return;
+    const targetUser = confirmActiveModal.user;
+    const nextActive = targetUser.active === false ? true : false;
+
+    if (profile?.role !== 'admin') {
+      showToast('Apenas administradores podem alterar o status operacional de um médium.', 'error');
+      setConfirmActiveModal({ isOpen: false, user: null });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ active: nextActive })
+        .eq('id', targetUser.id);
+
+      if (error) throw error;
+
+      showToast(
+        `Médium ${targetUser.name.split(' ')[0]} foi ${nextActive ? 'ativado' : 'desativado'} com sucesso!`,
+        'success'
+      );
+      fetchInitialData();
+    } catch (err) {
+      showToast('Erro ao atualizar status: ' + err.message, 'error');
+    } finally {
+      setConfirmActiveModal({ isOpen: false, user: null });
+    }
   };
 
   return (
@@ -400,36 +450,58 @@ const Admin = () => {
       ) : activeTab === 'usuarios' ? (
         /* Users & Registration Tab */
         <div className="space-y-8 animate-in fade-in">
+          {/* Header Description & Resumo Discreto */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div>
+              <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
+                <span className="material-symbols-outlined text-violet-600">group</span>
+                Médiuns e Gestores
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Gestão operacional de voluntários, controle de acessos e status ativo/inativo.
+              </p>
+            </div>
+
+            {/* Resumo Discreto de Contagens */}
+            <div className="px-4 py-2 bg-violet-50/80 border border-violet-200/60 rounded-2xl text-xs font-bold text-violet-950 flex items-center gap-2 shrink-0">
+              <span>{users.length} cadastrados</span>
+              <span className="text-gray-300">•</span>
+              <span className="text-emerald-700">{users.filter(u => u.active !== false).length} ativos</span>
+              <span className="text-gray-300">•</span>
+              <span className="text-gray-500">{users.filter(u => u.active === false).length} inativos</span>
+            </div>
+          </div>
+
           {/* Registration Form */}
-          <div className="bg-primary/5 p-8 rounded-3xl border border-primary/10">
+          <div className="bg-violet-50/40 p-6 sm:p-8 rounded-3xl border border-violet-100">
             <h3 className="font-headline font-bold text-xl text-primary mb-6">Cadastrar Novo Médium</h3>
             <form onSubmit={handleRegisterMedium} className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <input 
                 type="text" placeholder="Nome Completo" value={newName} onChange={e => setNewName(e.target.value)} required
-                className="px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                className="px-4 py-3 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-600/20 outline-none text-sm font-bold text-primary"
               />
               <input 
                 type="email" placeholder="E-mail Pessoal" value={newEmail} onChange={e => setNewEmail(e.target.value)} required
-                className="px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                className="px-4 py-3 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-600/20 outline-none text-sm font-bold text-primary"
               />
               <input 
                 type="tel" placeholder="WhatsApp (Ex: 11 90000-0000)" value={newPhone} onChange={e => setNewPhone(formatPhone(e.target.value))} required maxLength={15}
-                className="px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                className="px-4 py-3 bg-white rounded-xl border border-gray-200 focus:ring-2 focus:ring-violet-600/20 outline-none text-sm font-bold text-primary"
               />
-              <button type="submit" className="px-4 py-3 bg-primary text-white font-bold rounded-xl hover:brightness-110 transition-all">
+              <button type="submit" className="px-4 py-3 bg-violet-600 text-white font-bold rounded-xl hover:brightness-110 shadow-md shadow-violet-600/20 transition-all">
                 Cadastrar
               </button>
             </form>
 
             {inviteMsg && (
-              <div className="mt-6 p-6 bg-white rounded-2xl border-2 border-dashed border-primary/20 space-y-4">
-                <p className="text-xs font-bold text-primary flex items-center gap-2">
-                  <span className="material-symbols-outlined">check_circle</span> Convite Gerado:
+              <div className="mt-6 p-6 bg-white rounded-2xl border-2 border-dashed border-violet-200 space-y-4">
+                <p className="text-xs font-bold text-violet-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-green-600">check_circle</span> Convite Gerado:
                 </p>
                 <div className="bg-gray-50 p-4 rounded-xl text-xs font-mono text-gray-600 whitespace-pre-wrap">{inviteMsg}</div>
                 <button 
                   onClick={() => copyToClipboard(inviteMsg)}
-                  className="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
                 >
                    <span className="material-symbols-outlined text-sm">content_copy</span> Copiar Convite para WhatsApp
                 </button>
@@ -437,48 +509,189 @@ const Admin = () => {
             )}
           </div>
 
+          {/* Barra de Filtros e Busca */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => { setUserStatusFilter('all'); setUserRoleFilter('all'); }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userStatusFilter === 'all' && userRoleFilter === 'all'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Todos ({users.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserStatusFilter(userStatusFilter === 'active' ? 'all' : 'active')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userStatusFilter === 'active'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Ativos ({users.filter(u => u.active !== false).length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserStatusFilter(userStatusFilter === 'inactive' ? 'all' : 'inactive')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userStatusFilter === 'inactive'
+                    ? 'bg-gray-700 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Inativos ({users.filter(u => u.active === false).length})
+              </button>
+
+              <span className="text-gray-300">|</span>
+
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter(userRoleFilter === 'volunteer' ? 'all' : 'volunteer')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userRoleFilter === 'volunteer'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Médiuns
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter(userRoleFilter === 'manager' ? 'all' : 'manager')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userRoleFilter === 'manager'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Gestores
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserRoleFilter(userRoleFilter === 'admin' ? 'all' : 'admin')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userRoleFilter === 'admin'
+                    ? 'bg-violet-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Administradores
+              </button>
+            </div>
+
+            <div className="w-full md:w-64 relative">
+              <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-base">search</span>
+              <input
+                type="text"
+                placeholder="Buscar médium por nome..."
+                value={searchUser}
+                onChange={e => setSearchUser(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-violet-600/20"
+              />
+            </div>
+          </div>
+
           {/* Users Table */}
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
-            <table className="w-full text-left min-w-[700px]">
+            <table className="w-full text-left min-w-[750px]">
               <thead>
-                <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                   <th className="px-6 py-5 whitespace-nowrap">Nome / Formação</th>
                   <th className="px-6 py-5 whitespace-nowrap">Contato</th>
                   <th className="px-6 py-5 whitespace-nowrap">Nível de Acesso</th>
+                  <th className="px-6 py-5 whitespace-nowrap">Status</th>
                   <th className="px-6 py-5 whitespace-nowrap text-right">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {users.map((u, i) => (
-                  <tr key={i} className="hover:bg-gray-50/20">
-                    <td className="px-6 py-6 whitespace-nowrap">
-                      <div className="font-bold text-primary">{u.name}</div>
-                      {u.cursos && u.cursos !== 'Nenhum curso / Não se aplica' && (
-                        <div className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-1 truncate max-w-[200px]" title={u.cursos}>
-                          {u.cursos}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-6 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{u.email}</div>
-                      {u.phone ? (
-                        <div className="text-xs text-green-600 font-bold mt-1 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px]">chat</span> {u.phone}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 mt-1 italic">Sem celular</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-6 uppercase text-[10px] font-black tracking-widest text-primary/60 whitespace-nowrap">{u.role}</td>
-                    <td className="px-6 py-6 text-right whitespace-nowrap">
-                      {u.id !== profile?.id && (
-                        <button onClick={() => toggleAdmin(u.id, u.role)} className="text-xs font-bold text-primary hover:underline">
-                          {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {users
+                  .filter(u => {
+                    const isActive = u.active !== false;
+                    if (userStatusFilter === 'active' && !isActive) return false;
+                    if (userStatusFilter === 'inactive' && isActive) return false;
+
+                    if (userRoleFilter === 'volunteer' && u.role !== 'volunteer') return false;
+                    if (userRoleFilter === 'manager' && u.role !== 'manager') return false;
+                    if (userRoleFilter === 'admin' && u.role !== 'admin') return false;
+
+                    if (searchUser.trim()) {
+                      const q = searchUser.toLowerCase();
+                      const nameMatch = u.name?.toLowerCase().includes(q);
+                      const emailMatch = u.email?.toLowerCase().includes(q);
+                      const phoneMatch = u.phone?.toLowerCase().includes(q);
+                      return nameMatch || emailMatch || phoneMatch;
+                    }
+
+                    return true;
+                  })
+                  .map((u, i) => {
+                    const isActive = u.active !== false;
+                    return (
+                      <tr key={u.id || i} className="hover:bg-gray-50/20 transition-colors">
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <div className="font-bold text-primary text-sm">{u.name}</div>
+                          {u.cursos && u.cursos !== 'Nenhum curso / Não se aplica' && (
+                            <div className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-1 truncate max-w-[220px]" title={u.cursos}>
+                              {u.cursos}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{u.email}</div>
+                          {u.phone ? (
+                            <div className="text-xs text-green-600 font-bold mt-1 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">chat</span> {u.phone}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400 mt-1 italic">Sem celular</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-6 font-bold text-xs text-primary whitespace-nowrap">
+                          <span className="px-2.5 py-1 bg-violet-50 text-violet-900 border border-violet-200/60 rounded-full font-bold text-xs inline-block">
+                            {ROLE_LABELS[u.role] || u.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <span className={`px-2.5 py-1 rounded-full font-extrabold text-xs inline-block ${
+                            isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {isActive ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-6 text-right whitespace-nowrap space-x-3">
+                          {profile?.role === 'admin' && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmActiveModal({ isOpen: true, user: u })}
+                              className={`text-xs font-bold hover:underline ${
+                                isActive ? 'text-gray-500 hover:text-gray-700' : 'text-emerald-700 hover:text-emerald-900'
+                              }`}
+                            >
+                              {isActive ? 'Desativar' : 'Ativar'}
+                            </button>
+                          )}
+
+                          {u.id !== profile?.id && (
+                            <button
+                              type="button"
+                              onClick={() => toggleAdmin(u.id, u.role)}
+                              className="text-xs font-bold text-violet-700 hover:underline"
+                            >
+                              {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -1015,6 +1228,41 @@ const Admin = () => {
               <button
                 onClick={confirmModal.onConfirm}
                 className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Interno de Confirmação para Ativar/Desativar Médium */}
+      {confirmActiveModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 border border-gray-100 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-violet-50 text-violet-700 rounded-2xl flex items-center justify-center">
+                <span className="material-symbols-outlined text-xl">person_pin</span>
+              </div>
+              <h4 className="font-headline font-bold text-lg text-primary">
+                {confirmActiveModal.user?.active === false ? 'Ativar Médium' : 'Desativar Médium'}
+              </h4>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Deseja realmente {confirmActiveModal.user?.active === false ? 'ativar' : 'desativar'} o status operacional de <strong>{confirmActiveModal.user?.name}</strong> na Casa Espírita?
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmActiveModal({ isOpen: false, user: null })}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmToggleActive}
+                className="flex-1 py-2.5 bg-violet-600 text-white font-bold rounded-xl text-xs shadow-md shadow-violet-600/20 hover:brightness-110 transition-all"
               >
                 Confirmar
               </button>
