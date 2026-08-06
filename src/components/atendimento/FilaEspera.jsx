@@ -69,7 +69,7 @@ const FilaEspera = ({ onShowToast }) => {
 
   const handleMovePos = async (personId, newPos) => {
     try {
-      await atendimentoService.reorganizePosition(personId, newPos, profile.id);
+      await atendimentoService.reorganizePosition(personId, newPos);
       onShowToast('Posição alterada com sucesso!', 'success');
       loadData();
     } catch (err) {
@@ -86,13 +86,12 @@ const FilaEspera = ({ onShowToast }) => {
         {
           prioridade: newPrioridade,
           motivo_urgencia: isUrgente ? null : (person.motivo_urgencia || 'Urgência definida pela administração'),
-        },
-        profile.id
+        }
       );
 
       if (newPrioridade === 'Urgente') {
         // Mover para a posição 1
-        await atendimentoService.reorganizePosition(person.id, 1, profile.id);
+        await atendimentoService.reorganizePosition(person.id, 1);
         onShowToast('Pessoa marcada como Urgente e movida para a 1ª posição!', 'success');
       } else {
         onShowToast('Prioridade alterada para Normal.', 'success');
@@ -106,7 +105,7 @@ const FilaEspera = ({ onShowToast }) => {
   const handleDelete = async (person) => {
     if (window.confirm(`Deseja remover "${person.nome}" da fila de espera?`)) {
       try {
-        await atendimentoService.deletePessoa(person.id, profile.id);
+        await atendimentoService.deletePessoa(person.id);
         onShowToast('Pessoa removida da fila.', 'success');
         loadData();
       } catch (err) {
@@ -125,7 +124,6 @@ const FilaEspera = ({ onShowToast }) => {
         startTime: urgentBumpData.atividade.start_time,
         endTime: urgentBumpData.atividade.end_time,
         pessoaParaRemanejarId: urgentBumpData.lastNormalPerson?.pessoa_id,
-        adminId: profile.id,
       });
 
       onShowToast('Atendimento urgente inserido e remanejamento realizado com sucesso!', 'success');

@@ -72,8 +72,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             prioridade,
             motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
             observacoes: observacoes.trim() || null,
-          },
-          profile.id
+          }
         );
         onSaved('Pessoa atualizada com sucesso!');
       } else {
@@ -87,7 +86,6 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
             observacoes: observacoes.trim() || null,
           },
-          profile.id,
           { placeAsPriority }
         );
         onSaved('Pessoa cadastrada na fila com sucesso!');

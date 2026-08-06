@@ -35,7 +35,6 @@ const AtendimentosDia = ({ onShowToast }) => {
       await atendimentoService.updateStatusProgramacao({
         programacaoId,
         novoStatus,
-        adminId: profile.id,
         ...extraData,
       });
 

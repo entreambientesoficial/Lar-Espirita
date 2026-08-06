@@ -66,7 +66,6 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
         eventDate,
         startTime: atividade?.start_time || '13:30:00',
         endTime: atividade?.end_time || '16:30:00',
-        adminId: profile.id,
         observacoes,
       });
 

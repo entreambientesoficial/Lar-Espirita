@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 /**
- * SERVIÇOS DE FILA DE ATENDIMENTO PÚBLICO (ISOLADO DO FLUXO DE MÉDIUNS)
+ * SERVIÇOS DE FILA DE ATENDIMENTO PÚBLICO (CHAMADAS RPC TRANSACIONAIS)
  */
 export const atendimentoService = {
   // 1. Buscar pessoas da fila (com filtros e busca)
@@ -22,9 +22,8 @@ export const atendimentoService = {
       query = query.or(`nome.ilike.${term},telefone.ilike.${term}`);
     }
 
-    // Se filtrando por aguardando, ordena pela posição na fila
     if (status === 'aguardando' || !status) {
-      query = query.order('posicao_fila', { ascending: true }).order('created_at', { ascending: true });
+      query = query.order('posicao_fila', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true });
     } else {
       query = query.order('updated_at', { ascending: false });
     }
@@ -34,73 +33,25 @@ export const atendimentoService = {
     return data || [];
   },
 
-  // 2. Cadastrar pessoa na fila
-  createPessoa: async (pessoaData, adminId, { placeAsPriority = false } = {}) => {
-    // Buscar maior posição atual entre pessoas aguardando
-    const { data: currentQueue } = await supabase
-      .from('atendimento_pessoas')
-      .select('posicao_fila')
-      .eq('status', 'aguardando')
-      .order('posicao_fila', { ascending: false })
-      .limit(1);
-
-    const maxPos = currentQueue && currentQueue.length > 0 ? currentQueue[0].posicao_fila : 0;
-
-    let targetPos = maxPos + 1;
-
-    if (placeAsPriority) {
-      targetPos = 1;
-      // Empurra todas as pessoas aguardando 1 posição para baixo
-      const { data: waitingList } = await supabase
-        .from('atendimento_pessoas')
-        .select('id, posicao_fila')
-        .eq('status', 'aguardando')
-        .order('posicao_fila', { ascending: false });
-
-      if (waitingList && waitingList.length > 0) {
-        for (const item of waitingList) {
-          await supabase
-            .from('atendimento_pessoas')
-            .update({ posicao_fila: item.posicao_fila + 1 })
-            .eq('id', item.id);
-        }
-      }
-    }
-
-    const payload = {
-      nome: pessoaData.nome.trim(),
-      telefone: pessoaData.telefone ? pessoaData.telefone.trim() : null,
-      tipo_atendimento: pessoaData.tipo_atendimento || 'Apometria',
-      prioridade: pessoaData.prioridade || 'Normal',
-      motivo_urgencia: pessoaData.prioridade === 'Urgente' ? pessoaData.motivo_urgencia?.trim() : null,
-      observacoes: pessoaData.observacoes ? pessoaData.observacoes.trim() : null,
-      data_entrada: pessoaData.data_entrada || new Date().toISOString().split('T')[0],
-      status: 'aguardando',
-      posicao_fila: targetPos,
-    };
-
-    const { data: created, error } = await supabase
-      .from('atendimento_pessoas')
-      .insert([payload])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Log no histórico
-    await atendimentoService.logHistorico({
-      pessoa_id: created.id,
-      admin_id: adminId,
-      action: 'CADASTRO_PESSOA',
-      dados_novos: created,
-      observacao: placeAsPriority ? 'Cadastrado como urgência na 1ª posição da fila.' : `Cadastrado na posição ${targetPos}.`,
+  // 2. Cadastrar pessoa na fila (Via RPC Transacional - Admin via auth.uid())
+  createPessoa: async (pessoaData, { placeAsPriority = false } = {}) => {
+    const { data, error } = await supabase.rpc('atendimento_cadastrar_pessoa', {
+      p_nome: pessoaData.nome,
+      p_telefone: pessoaData.telefone || null,
+      p_tipo_atendimento: pessoaData.tipo_atendimento || 'Apometria',
+      p_prioridade: pessoaData.prioridade || 'Normal',
+      p_motivo_urgencia: pessoaData.motivo_urgencia || null,
+      p_observacoes: pessoaData.observacoes || null,
+      p_data_entrada: pessoaData.data_entrada || new Date().toISOString().split('T')[0],
+      p_place_as_priority: placeAsPriority,
     });
 
-    return created;
+    if (error) throw error;
+    return data;
   },
 
-  // 3. Atualizar dados de uma pessoa
-  updatePessoa: async (id, updates, adminId) => {
+  // 3. Atualizar dados cadastrais de uma pessoa
+  updatePessoa: async (id, updates) => {
     const { data: previous } = await supabase
       .from('atendimento_pessoas')
       .select('*')
@@ -118,7 +69,6 @@ export const atendimentoService = {
 
     await atendimentoService.logHistorico({
       pessoa_id: id,
-      admin_id: adminId,
       action: 'EDICAO_PESSOA',
       dados_anteriores: previous,
       dados_novos: updated,
@@ -128,104 +78,27 @@ export const atendimentoService = {
     return updated;
   },
 
-  // 4. Reorganizar posição manual na fila (Sem deixar buracos ou duplicatas)
-  reorganizePosition: async (pessoaId, newPos, adminId) => {
-    const { data: targetPerson } = await supabase
-      .from('atendimento_pessoas')
-      .select('*')
-      .eq('id', pessoaId)
-      .single();
-
-    if (!targetPerson || targetPerson.status !== 'aguardando') return;
-
-    const oldPos = targetPerson.posicao_fila;
-    if (oldPos === newPos) return;
-
-    // Buscar lista ordenada de pessoas aguardando
-    const { data: waitingList } = await supabase
-      .from('atendimento_pessoas')
-      .select('id, posicao_fila')
-      .eq('status', 'aguardando')
-      .order('posicao_fila', { ascending: true });
-
-    if (!waitingList || waitingList.length === 0) return;
-
-    // Garante limites válidos
-    const finalPos = Math.max(1, Math.min(newPos, waitingList.length));
-
-    // Remove a pessoa da lista temporária e reinsere na nova posição
-    const rest = waitingList.filter(p => p.id !== pessoaId);
-    rest.splice(finalPos - 1, 0, { id: pessoaId, posicao_fila: finalPos });
-
-    // Atualiza posições no BD
-    for (let i = 0; i < rest.length; i++) {
-      const item = rest[i];
-      const correctPos = i + 1;
-      if (item.posicao_fila !== correctPos || item.id === pessoaId) {
-        await supabase
-          .from('atendimento_pessoas')
-          .update({ posicao_fila: correctPos, updated_at: new Date().toISOString() })
-          .eq('id', item.id);
-      }
-    }
-
-    await atendimentoService.logHistorico({
-      pessoa_id: pessoaId,
-      admin_id: adminId,
-      action: 'REORGANIZACAO_FILA',
-      dados_anteriores: { posicao_fila: oldPos },
-      dados_novos: { posicao_fila: finalPos },
-      observacao: `Posição alterada de #${oldPos} para #${finalPos}.`,
+  // 4. Reorganizar posição manual na fila (Via RPC Transacional)
+  reorganizePosition: async (pessoaId, newPos) => {
+    const { error } = await supabase.rpc('atendimento_mover_posicao', {
+      p_pessoa_id: pessoaId,
+      p_new_pos: newPos,
     });
-  },
 
-  // 5. Excluir pessoa da fila (Permitido apenas se não houver agendamentos/histórico associados)
-  deletePessoa: async (pessoaId, adminId) => {
-    // Verifica agendamentos vinculados
-    const { count: progCount } = await supabase
-      .from('atendimento_programacoes')
-      .select('id', { count: 'exact', head: true })
-      .eq('pessoa_id', pessoaId);
-
-    if (progCount && progCount > 0) {
-      throw new Error('Esta pessoa já possui histórico de agendamentos e não pode ser excluída fisicamente. Altere o status para Cancelado.');
-    }
-
-    const { data: person } = await supabase
-      .from('atendimento_pessoas')
-      .select('nome, posicao_fila, status')
-      .eq('id', pessoaId)
-      .single();
-
-    // Remove registros de histórico atrelados
-    await supabase.from('atendimento_historico').delete().eq('pessoa_id', pessoaId);
-
-    // Deleta a pessoa
-    const { error } = await supabase.from('atendimento_pessoas').delete().eq('id', pessoaId);
     if (error) throw error;
-
-    // Se estava na fila de espera, reordena os demais
-    if (person && person.status === 'aguardando') {
-      const { data: waitingList } = await supabase
-        .from('atendimento_pessoas')
-        .select('id, posicao_fila')
-        .eq('status', 'aguardando')
-        .order('posicao_fila', { ascending: true });
-
-      if (waitingList) {
-        for (let i = 0; i < waitingList.length; i++) {
-          await supabase
-            .from('atendimento_pessoas')
-            .update({ posicao_fila: i + 1 })
-            .eq('id', waitingList[i].id);
-        }
-      }
-    }
   },
 
-  // 6. Capacidade de atendimentos por atividade
+  // 5. Excluir pessoa da fila (Via RPC Transacional)
+  deletePessoa: async (pessoaId) => {
+    const { error } = await supabase.rpc('atendimento_excluir_pessoa', {
+      p_pessoa_id: pessoaId,
+    });
+
+    if (error) throw error;
+  },
+
+  // 6. Capacidades por atividade
   getCapacidades: async () => {
-    // Busca atividades regulares ativas
     const { data: atividades } = await supabase
       .from('atividades')
       .select('*')
@@ -247,7 +120,7 @@ export const atendimentoService = {
     }));
   },
 
-  updateCapacidade: async (atividadeId, capacidade, adminId) => {
+  updateCapacidade: async (atividadeId, capacidade) => {
     const { data, error } = await supabase
       .from('atendimento_capacidades')
       .upsert(
@@ -261,19 +134,17 @@ export const atendimentoService = {
     return data;
   },
 
-  // 7. Cálculo de Previsão Aproximada de Atendimento
+  // 7. Cálculo de Previsão Aproximada
   calculatePrevisao: (posicaoFila, totalCapacidadeSemanal) => {
     if (!posicaoFila || posicaoFila <= 0) return 'Previsão ainda não disponível';
     if (!totalCapacidadeSemanal || totalCapacidadeSemanal <= 0) {
       return 'Configure a quantidade de atendimentos por sessão para calcular a previsão.';
     }
 
-    // Semanas estimadas
     const semanasEstimadas = Math.ceil(posicaoFila / totalCapacidadeSemanal);
     const minSemanas = Math.max(1, semanasEstimadas - 1);
     const maxSemanas = semanasEstimadas + 1;
 
-    // Calcular quinzena/mês estimado
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + semanasEstimadas * 7);
 
@@ -284,117 +155,41 @@ export const atendimentoService = {
     return `Previsão aproximada: ${minSemanas} a ${maxSemanas} semanas (${quinzena} de ${monthName} de ${year})`;
   },
 
-  // 8. Programar atendimento para uma pessoa em data/sessão específica
+  // 8. Programar Atendimento (Via RPC Transacional)
   programarAtendimento: async ({
     pessoaId,
     atividadeId,
     eventDate,
     startTime,
     endTime,
-    adminId,
     observacoes = '',
     forceOverCapacity = false,
   }) => {
-    // Verifica capacidade da sessão
-    const { data: capRecord } = await supabase
-      .from('atendimento_capacidades')
-      .select('capacidade')
-      .eq('atividade_id', atividadeId)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('atendimento_programar_pessoa', {
+      p_pessoa_id: pessoaId,
+      p_atividade_id: atividadeId,
+      p_event_date: eventDate,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_observacoes: observacoes || null,
+      p_force_over_capacity: forceOverCapacity,
+    });
 
-    const capacidadeMax = capRecord ? capRecord.capacidade : 6;
+    if (error) throw error;
 
-    // Conta agendamentos ativos já feitos para este dia e sessão
-    const { data: currentProgs } = await supabase
-      .from('atendimento_programacoes')
-      .select('id, pessoa_id, prioridade, status, ordem_sessao, atendimento_pessoas(nome)')
-      .eq('atividade_id', atividadeId)
-      .eq('event_date', eventDate)
-      .neq('status', 'cancelado')
-      .order('ordem_sessao', { ascending: true });
-
-    const activeCount = currentProgs ? currentProgs.length : 0;
-
-    // Se sessão está cheia e não foi forçado a encaixe urgente
-    if (activeCount >= capacidadeMax && !forceOverCapacity) {
-      // Localizar última pessoa normal da sessão para remanejamento
-      const normalList = (currentProgs || []).filter(p => p.prioridade !== 'Urgente' && p.status === 'programado');
-      const lastNormal = normalList.length > 0 ? normalList[normalList.length - 1] : null;
-
+    if (data && data.over_capacity) {
       return {
         overCapacity: true,
-        capacity: capacidadeMax,
-        currentCount: activeCount,
-        lastNormalPerson: lastNormal,
+        capacity: data.capacity,
+        currentCount: data.count,
+        lastNormalPerson: data.last_normal_pessoa_id ? { pessoa_id: data.last_normal_pessoa_id } : null,
       };
     }
 
-    // Busca dados da pessoa
-    const { data: person } = await supabase
-      .from('atendimento_pessoas')
-      .select('*')
-      .eq('id', pessoaId)
-      .single();
-
-    const nextOrdem = activeCount + 1;
-
-    // Criar agendamento
-    const { data: newProg, error: progErr } = await supabase
-      .from('atendimento_programacoes')
-      .insert([
-        {
-          pessoa_id: pessoaId,
-          atividade_id: atividadeId,
-          event_date: eventDate,
-          start_time: startTime,
-          end_time: endTime,
-          ordem_sessao: nextOrdem,
-          prioridade: person.prioridade,
-          status: 'programado',
-          observacoes: observacoes || null,
-        },
-      ])
-      .select()
-      .single();
-
-    if (progErr) throw progErr;
-
-    // Atualiza status da pessoa para 'programado'
-    await supabase
-      .from('atendimento_pessoas')
-      .update({ status: 'programado', updated_at: new Date().toISOString() })
-      .eq('id', pessoaId);
-
-    // Se a pessoa estava na fila de espera, reajusta a posição dos demais que ficaram aguardando
-    const { data: waitingList } = await supabase
-      .from('atendimento_pessoas')
-      .select('id, posicao_fila')
-      .eq('status', 'aguardando')
-      .order('posicao_fila', { ascending: true });
-
-    if (waitingList) {
-      for (let i = 0; i < waitingList.length; i++) {
-        await supabase
-          .from('atendimento_pessoas')
-          .update({ posicao_fila: i + 1 })
-          .eq('id', waitingList[i].id);
-      }
-    }
-
-    // Registra histórico
-    await atendimentoService.logHistorico({
-      pessoa_id: pessoaId,
-      programacao_id: newProg.id,
-      admin_id: adminId,
-      action: 'PROGRAMACAO_ATENDIMENTO',
-      dados_novos: newProg,
-      observacao: `Programado para ${eventDate} às ${startTime ? startTime.slice(0, 5) : 'horário da sessão'}.`,
-    });
-
-    return { overCapacity: false, programacao: newProg };
+    return { overCapacity: false, programacao_id: data.programacao_id };
   },
 
-  // 9. Remanejar pessoa em caso de urgência em sessão cheia
+  // 9. Remanejar Pessoa em Sessão Cheia para Encaixe de Urgência (Via RPC Transacional)
   remanejarEInserirUrgencia: async ({
     pessoaUrgenteId,
     atividadeId,
@@ -402,59 +197,20 @@ export const atendimentoService = {
     startTime,
     endTime,
     pessoaParaRemanejarId,
-    adminId,
   }) => {
-    // 1. Programar pessoa urgente na sessão
-    const result = await atendimentoService.programarAtendimento({
-      pessoaId: pessoaUrgenteId,
-      atividadeId,
-      eventDate,
-      startTime,
-      endTime,
-      adminId,
-      forceOverCapacity: true,
+    const { error } = await supabase.rpc('atendimento_remanejar_urgencia', {
+      p_pessoa_urgente_id: pessoaUrgenteId,
+      p_atividade_id: atividadeId,
+      p_event_date: eventDate,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_pessoa_remanejar_id: pessoaParaRemanejarId || null,
     });
 
-    // 2. Se houver pessoa normal para remanejar
-    if (pessoaParaRemanejarId) {
-      // Cancela o agendamento atual da pessoa remanejada
-      const { data: progAntiga } = await supabase
-        .from('atendimento_programacoes')
-        .select('*')
-        .eq('pessoa_id', pessoaParaRemanejarId)
-        .eq('event_date', eventDate)
-        .eq('atividade_id', atividadeId)
-        .single();
-
-      if (progAntiga) {
-        await supabase
-          .from('atendimento_programacoes')
-          .update({ status: 'cancelado', updated_at: new Date().toISOString() })
-          .eq('id', progAntiga.id);
-
-        // Reinsere a pessoa no status 'aguardando' na 1ª posição da fila
-        await supabase
-          .from('atendimento_pessoas')
-          .update({ status: 'aguardando', updated_at: new Date().toISOString() })
-          .eq('id', pessoaParaRemanejarId);
-
-        await atendimentoService.reorganizePosition(pessoaParaRemanejarId, 1, adminId);
-
-        await atendimentoService.logHistorico({
-          pessoa_id: pessoaParaRemanejarId,
-          programacao_id: progAntiga.id,
-          admin_id: adminId,
-          action: 'REMANEJAMENTO_URGENCIA',
-          dados_anteriores: progAntiga,
-          observacao: `Remanejado automaticamente da sessão ${eventDate} devido ao encaixe de urgência. Retornado à 1ª posição da fila.`,
-        });
-      }
-    }
-
-    return result;
+    if (error) throw error;
   },
 
-  // 10. Buscar atendimentos programados do dia
+  // 10. Buscar Agendamentos do Dia
   getProgramacoesDia: async (dateStr) => {
     const todayStr = dateStr || new Date().toISOString().split('T')[0];
 
@@ -470,7 +226,7 @@ export const atendimentoService = {
     return data || [];
   },
 
-  // 11. Buscar todos os atendimentos programados (futuros e passados)
+  // 11. Buscar Todos os Agendamentos Programados
   getAllProgramacoes: async () => {
     const { data, error } = await supabase
       .from('atendimento_programacoes')
@@ -482,89 +238,40 @@ export const atendimentoService = {
     return data || [];
   },
 
-  // 12. Atualizar status do agendamento (compareceu, atendido, nao_compareceu, cancelado, retornar_fila)
+  // 12. Atualizar Status do Agendamento (Via RPC Transacional)
   updateStatusProgramacao: async ({
     programacaoId,
     novoStatus,
-    adminId,
     posicaoRetorno = 1,
     observacao = '',
   }) => {
-    const { data: prog } = await supabase
-      .from('atendimento_programacoes')
-      .select('*, atendimento_pessoas(*)')
-      .eq('id', programacaoId)
-      .single();
-
-    if (!prog) throw new Error('Agendamento não encontrado.');
-
-    const oldStatus = prog.status;
-
-    // Atualiza status do agendamento
-    const { data: updatedProg, error } = await supabase
-      .from('atendimento_programacoes')
-      .update({ status: novoStatus, updated_at: new Date().toISOString() })
-      .eq('id', programacaoId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Atualiza status da pessoa
-    if (novoStatus === 'atendido' || novoStatus === 'compareceu' || novoStatus === 'nao_compareceu' || novoStatus === 'cancelado') {
-      await supabase
-        .from('atendimento_pessoas')
-        .update({ status: novoStatus, updated_at: new Date().toISOString() })
-        .eq('id', prog.pessoa_id);
-    }
-
-    // Se retornando para a fila
-    if (novoStatus === 'retornar_fila') {
-      // Marca agendamento como cancelado
-      await supabase
-        .from('atendimento_programacoes')
-        .update({ status: 'cancelado', updated_at: new Date().toISOString() })
-        .eq('id', programacaoId);
-
-      // Marca pessoa como 'aguardando'
-      await supabase
-        .from('atendimento_pessoas')
-        .update({ status: 'aguardando', updated_at: new Date().toISOString() })
-        .eq('id', prog.pessoa_id);
-
-      // Reorganiza na posição desejada
-      await atendimentoService.reorganizePosition(prog.pessoa_id, posicaoRetorno, adminId);
-    }
-
-    // Registra no histórico
-    await atendimentoService.logHistorico({
-      pessoa_id: prog.pessoa_id,
-      programacao_id: programacaoId,
-      admin_id: adminId,
-      action: `STATUS_${novoStatus.toUpperCase()}`,
-      dados_anteriores: { status: oldStatus },
-      dados_novos: { status: novoStatus },
-      observacao: observacao || `Status alterado de ${oldStatus} para ${novoStatus}.`,
+    const { error } = await supabase.rpc('atendimento_atualizar_status_programacao', {
+      p_programacao_id: programacaoId,
+      p_novo_status: novoStatus,
+      p_posicao_retorno: posicaoRetorno,
+      p_observacao: observacao || null,
     });
 
-    return updatedProg;
+    if (error) throw error;
   },
 
   // 13. Registrar Log no Histórico
   logHistorico: async ({
     pessoa_id,
     programacao_id = null,
-    admin_id,
     action,
     dados_anteriores = null,
     dados_novos = null,
     observacao = null,
   }) => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) return;
+
     const { error } = await supabase.from('atendimento_historico').insert([
       {
         pessoa_id,
         programacao_id,
-        admin_id,
+        admin_id: userData.user.id,
         action,
         dados_anteriores,
         dados_novos,
@@ -586,7 +293,7 @@ export const atendimentoService = {
     return data || [];
   },
 
-  // 15. Buscar Histórico Específico de uma Pessoa
+  // 15. Buscar Histórico de uma Pessoa
   getHistoricoPessoa: async (pessoaId) => {
     const { data, error } = await supabase
       .from('atendimento_historico')
