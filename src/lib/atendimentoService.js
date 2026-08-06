@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 /**
- * SERVIÇOS DE FILA DE ATENDIMENTO PÚBLICO (CHAMADAS RPC TRANSACIONAIS)
+ * SERVIÇOS DE FILA DE ATENDIMENTO PÚBLICO (CHAMADAS RPC TRANSACIONAIS E CONTROLE DE DISPONIBILIDADE)
  */
 export const atendimentoService = {
   // 1. Buscar pessoas da fila (com filtros e busca)
@@ -47,6 +47,25 @@ export const atendimentoService = {
     });
 
     if (error) throw error;
+
+    // Atualiza campos de disponibilidade se informados
+    if (
+      pessoaData.dias_disponiveis ||
+      pessoaData.periodos_disponiveis ||
+      pessoaData.datas_indisponiveis ||
+      pessoaData.observacoes_disponibilidade
+    ) {
+      await supabase
+        .from('atendimento_pessoas')
+        .update({
+          dias_disponiveis: pessoaData.dias_disponiveis || null,
+          periodos_disponiveis: pessoaData.periodos_disponiveis || null,
+          datas_indisponiveis: pessoaData.datas_indisponiveis || null,
+          observacoes_disponibilidade: pessoaData.observacoes_disponibilidade || null,
+        })
+        .eq('id', data.id);
+    }
+
     return data;
   },
 
@@ -63,6 +82,10 @@ export const atendimentoService = {
     startTime,
     endTime,
     forceOverCapacity = false,
+    dias_disponiveis = null,
+    periodos_disponiveis = null,
+    datas_indisponiveis = null,
+    observacoes_disponibilidade = null,
   }) => {
     const { data, error } = await supabase.rpc('atendimento_cadastrar_e_programar_urgente', {
       p_nome: nome,
@@ -79,6 +102,24 @@ export const atendimentoService = {
     });
 
     if (error) throw error;
+
+    if (
+      dias_disponiveis ||
+      periodos_disponiveis ||
+      datas_indisponiveis ||
+      observacoes_disponibilidade
+    ) {
+      await supabase
+        .from('atendimento_pessoas')
+        .update({
+          dias_disponiveis: dias_disponiveis || null,
+          periodos_disponiveis: periodos_disponiveis || null,
+          datas_indisponiveis: datas_indisponiveis || null,
+          observacoes_disponibilidade: observacoes_disponibilidade || null,
+        })
+        .eq('id', data.id);
+    }
+
     return data;
   },
 
@@ -104,7 +145,7 @@ export const atendimentoService = {
       action: 'EDICAO_PESSOA',
       dados_anteriores: previous,
       dados_novos: updated,
-      observacao: 'Dados cadastrais atualizados.',
+      observacao: 'Dados cadastrais e de disponibilidade atualizados.',
     });
 
     return updated;
@@ -189,9 +230,10 @@ export const atendimentoService = {
   },
 
   /**
-   * 7. Cálculo de Previsão Realista baseada nas sessões existentes e vagas disponíveis
+   * 7. Cálculo de Previsão Realista RESPEITANDO A DATA DE ENTRADA (strictly > data_entrada)
+   *    E TODAS AS RESTRIÇÕES DE DISPONIBILIDADE DO PACIENTE.
    */
-  calculatePrevisaoReal: (posicaoFila, capacidades = [], programacoes = []) => {
+  calculatePrevisaoReal: (posicaoFila, capacidades = [], programacoes = [], pessoa = null) => {
     if (!posicaoFila || posicaoFila <= 0) return null;
     if (!capacidades || capacidades.length === 0) {
       return { text: 'Aguardando sessões', formattedDate: null };
@@ -208,6 +250,14 @@ export const atendimentoService = {
       }
     });
 
+    // Extrai data de referência da entrada (sessionDate MUST BE strictly > dataEntradaRef)
+    const dataEntradaRef = pessoa?.data_entrada || new Date().toISOString().split('T')[0];
+
+    // Extrai restrições de disponibilidade do paciente
+    const diasDisp = Array.isArray(pessoa?.dias_disponiveis) ? pessoa.dias_disponiveis.map(Number) : null;
+    const periodosDisp = Array.isArray(pessoa?.periodos_disponiveis) ? pessoa.periodos_disponiveis : null;
+    const datasIndisp = Array.isArray(pessoa?.datas_indisponiveis) ? pessoa.datas_indisponiveis : [];
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -217,18 +267,42 @@ export const atendimentoService = {
       const currentDate = new Date(today);
       currentDate.setDate(currentDate.getDate() + dayOffset);
 
-      const dow = currentDate.getDay();
       const dateStr = currentDate.toISOString().split('T')[0];
 
-      // Sessões regulares nesse dia da semana
+      // Regra 1: Previsão automática NUNCA considera o mesmo dia do cadastro (strictly > data_entrada)
+      if (dateStr <= dataEntradaRef) {
+        continue;
+      }
+
+      const dow = currentDate.getDay();
+
+      // Regra 2: Filtra por dias da semana disponíveis se especificado
+      if (diasDisp && diasDisp.length > 0 && !diasDisp.includes(dow)) {
+        continue;
+      }
+
+      // Regra 3: Filtra por datas específicas indisponíveis
+      if (datasIndisp && datasIndisp.includes(dateStr)) {
+        continue;
+      }
+
+      // Busca sessões regulares e extras ativas
       const regSessoes = capacidades.filter(c => c.day_of_week === dow && !c.event_date);
-      // Sessões extras nessa data exata
       const extraSessoes = capacidades.filter(c => c.event_date === dateStr);
 
       const sessoesDoDia = [...regSessoes, ...extraSessoes];
       sessoesDoDia.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
 
       sessoesDoDia.forEach(sessao => {
+        const startTime = sessao.start_time || '13:30';
+        const startHour = parseInt(startTime.split(':')[0], 10);
+        const periodName = startHour < 18 ? 'tarde' : 'noite';
+
+        // Regra 4: Filtra por período disponível (tarde vs noite)
+        if (periodosDisp && periodosDisp.length > 0 && !periodosDisp.includes(periodName)) {
+          return;
+        }
+
         const capTotal = sessao.capacidade || (sessao.quantidade_salas * sessao.atendimentos_por_sala) || 9;
         const ocupado = ocupacaoMap[`${dateStr}_${sessao.id}`] || 0;
         const vagasLivres = Math.max(0, capTotal - ocupado);
@@ -237,7 +311,7 @@ export const atendimentoService = {
           sessoesProjetadas.push({
             dateStr,
             dowName: DAY_NAMES[dow],
-            timeStr: sessao.start_time ? sessao.start_time.slice(0, 5) : '13:30',
+            timeStr: startTime.slice(0, 5),
             atividadeName: sessao.name,
             vagasLivres,
           });
@@ -263,10 +337,13 @@ export const atendimentoService = {
       pessoasAlocadas += sessao.vagasLivres;
     }
 
-    return { text: 'Previsão além de 1 ano', formattedDate: null };
+    return {
+      text: 'Sem previsão disponível para as restrições informadas.',
+      formattedDate: null,
+    };
   },
 
-  // Mantido para compatibilidade prévia se necessário
+  // Mantido para compatibilidade prévia
   calculatePrevisao: (posicaoFila, totalCapacidadeSemanal) => {
     if (!posicaoFila || posicaoFila <= 0) return 'Previsão ainda não disponível';
     if (!totalCapacidadeSemanal || totalCapacidadeSemanal <= 0) {
@@ -310,6 +387,53 @@ export const atendimentoService = {
     }
 
     return { overCapacity: false, programacao_id: data.programacao_id };
+  },
+
+  // 8.1 Reagendar Atendimento (Cancela anterior, programa novo e registra histórico detalhado)
+  reagendarAtendimento: async ({
+    pessoaId,
+    oldProgramacaoId,
+    atividadeId,
+    eventDate,
+    startTime,
+    endTime,
+    observacoes = '',
+    forceOverCapacity = false,
+  }) => {
+    // 1. Cancela a programação anterior se informada
+    if (oldProgramacaoId) {
+      await supabase
+        .from('atendimento_programacoes')
+        .update({ status: 'cancelado', updated_at: new Date().toISOString() })
+        .eq('id', oldProgramacaoId);
+    }
+
+    // 2. Executa a nova programação via RPC transacional
+    const { data, error } = await supabase.rpc('atendimento_programar_pessoa', {
+      p_pessoa_id: pessoaId,
+      p_atividade_id: atividadeId,
+      p_event_date: eventDate,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_observacoes: observacoes || null,
+      p_force_over_capacity: forceOverCapacity,
+    });
+
+    if (error) throw error;
+
+    // 3. Registra ação no histórico
+    if (data && data.programacao_id) {
+      await atendimentoService.logHistorico({
+        pessoa_id: pessoaId,
+        programacao_id: data.programacao_id,
+        action: 'REAGENDAMENTO_ATENDIMENTO',
+        dados_anteriores: oldProgramacaoId ? { programacao_id: oldProgramacaoId } : null,
+        dados_novos: { programacao_id: data.programacao_id, event_date: eventDate, atividade_id: atividadeId },
+        observacao: `Reagendado para ${eventDate} (${startTime ? startTime.slice(0,5) : ''}). ${observacoes || ''}`.trim(),
+      });
+    }
+
+    return data;
   },
 
   // 9. Remanejar Pessoa em Sessão Cheia para Encaixe de Urgência (Via RPC Transacional)

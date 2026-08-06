@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { atendimentoService } from '../../lib/atendimentoService';
 import { useAuth } from '../../context/AuthContext';
+import ModalReagendarAtendimento from './ModalReagendarAtendimento';
 
 const ProgramacaoSessoes = ({ onShowToast }) => {
   const { profile } = useAuth();
@@ -11,6 +12,10 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   // Estados para edição por sessão: { [atividadeId]: { qSalas: number, aPorSala: number } }
   const [editingCapMap, setEditingCapMap] = useState({});
   const [savingCapId, setSavingCapId] = useState(null);
+
+  // Modal Reagendar
+  const [reagendarItem, setReagendarItem] = useState(null);
+  const [isReagendarOpen, setIsReagendarOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -65,6 +70,11 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
     } finally {
       setSavingCapId(null);
     }
+  };
+
+  const handleRescheduled = (msg) => {
+    onShowToast(msg, 'success');
+    loadData();
   };
 
   const DAY_NAMES = {
@@ -186,7 +196,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
           <div className="py-12 text-center text-gray-400 italic">Carregando agendamentos...</div>
         ) : programacoes.length > 0 ? (
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
-            <table className="w-full text-left min-w-[700px]">
+            <table className="w-full text-left min-w-[750px]">
               <thead>
                 <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   <th className="px-6 py-4">Data</th>
@@ -194,6 +204,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                   <th className="px-6 py-4">Trabalho / Sessão</th>
                   <th className="px-6 py-4">Prioridade</th>
                   <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
@@ -227,6 +238,19 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                         {p.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      {p.status === 'programado' && (
+                        <button
+                          onClick={() => {
+                            setReagendarItem(p);
+                            setIsReagendarOpen(true);
+                          }}
+                          className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-indigo-700 transition-all"
+                        >
+                          Reagendar
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -238,6 +262,14 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
           </div>
         )}
       </div>
+
+      {/* Modal Reagendar */}
+      <ModalReagendarAtendimento
+        isOpen={isReagendarOpen}
+        onClose={() => setIsReagendarOpen(false)}
+        programacaoItem={reagendarItem}
+        onRescheduled={handleRescheduled}
+      />
     </div>
   );
 };

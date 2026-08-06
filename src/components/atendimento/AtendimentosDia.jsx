@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { atendimentoService } from '../../lib/atendimentoService';
 import { useAuth } from '../../context/AuthContext';
+import ModalReagendarAtendimento from './ModalReagendarAtendimento';
 
 const AtendimentosDia = ({ onShowToast }) => {
   const { profile } = useAuth();
@@ -12,6 +13,9 @@ const AtendimentosDia = ({ onShowToast }) => {
   const [retornarPerson, setRetornarPerson] = useState(null);
   const [retornarPos, setRetornarPos] = useState(1);
   const [isRetornarOpen, setIsRetornarOpen] = useState(false);
+
+  const [reagendarItem, setReagendarItem] = useState(null);
+  const [isReagendarOpen, setIsReagendarOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -61,6 +65,11 @@ const AtendimentosDia = ({ onShowToast }) => {
     await handleUpdateStatus(retornarPerson.id, 'retornar_fila', { posicaoRetorno: pos });
     setIsRetornarOpen(false);
     setRetornarPerson(null);
+  };
+
+  const handleRescheduled = (msg) => {
+    onShowToast(msg, 'success');
+    loadData();
   };
 
   // Agrupa atendimentos por atividade/horário
@@ -151,12 +160,23 @@ const AtendimentosDia = ({ onShowToast }) => {
                       {/* Botões de Ação Operational */}
                       <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                         {prog.status === 'programado' && (
-                          <button
-                            onClick={() => handleUpdateStatus(prog.id, 'compareceu')}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-blue-700 transition-all"
-                          >
-                            Compareceu
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleUpdateStatus(prog.id, 'compareceu')}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-blue-700 transition-all"
+                            >
+                              Compareceu
+                            </button>
+                            <button
+                              onClick={() => {
+                                setReagendarItem(prog);
+                                setIsReagendarOpen(true);
+                              }}
+                              className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-indigo-700 transition-all"
+                            >
+                              Reagendar
+                            </button>
+                          </>
                         )}
 
                         {(prog.status === 'programado' || prog.status === 'compareceu') && (
@@ -254,6 +274,14 @@ const AtendimentosDia = ({ onShowToast }) => {
           </div>
         </div>
       )}
+
+      {/* Modal Reagendar Atendimento */}
+      <ModalReagendarAtendimento
+        isOpen={isReagendarOpen}
+        onClose={() => setIsReagendarOpen(false)}
+        programacaoItem={reagendarItem}
+        onRescheduled={handleRescheduled}
+      />
     </div>
   );
 };

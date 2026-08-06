@@ -15,6 +15,12 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
   const [observacoes, setObservacoes] = useState('');
   const [placeAsPriority, setPlaceAsPriority] = useState(false);
 
+  // Campos de Disponibilidade (Opcionais)
+  const [diasDisponiveis, setDiasDisponiveis] = useState([1, 2, 3, 4, 5, 6]); // Padrão todos os dias
+  const [periodosDisponiveis, setPeriodosDisponiveis] = useState(['tarde', 'noite']); // Padrão tarde e noite
+  const [datasIndisponiveisText, setDatasIndisponiveisText] = useState('');
+  const [observacoesDisponibilidade, setObservacoesDisponibilidade] = useState('');
+
   // Estados para a Programação Imediata (Opcional) de Urgências
   const [atividades, setAtividades] = useState([]);
   const [dataProgramacao, setDataProgramacao] = useState('');
@@ -40,6 +46,13 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
       setMotivoUrgencia(editingPerson.motivo_urgencia || '');
       setObservacoes(editingPerson.observacoes || '');
       setPlaceAsPriority(false);
+
+      // Disponibilidade
+      setDiasDisponiveis(Array.isArray(editingPerson.dias_disponiveis) ? editingPerson.dias_disponiveis : [1, 2, 3, 4, 5, 6]);
+      setPeriodosDisponiveis(Array.isArray(editingPerson.periodos_disponiveis) ? editingPerson.periodos_disponiveis : ['tarde', 'noite']);
+      setDatasIndisponiveisText(Array.isArray(editingPerson.datas_indisponiveis) ? editingPerson.datas_indisponiveis.join(', ') : '');
+      setObservacoesDisponibilidade(editingPerson.observacoes_disponibilidade || '');
+
       setDataProgramacao('');
       setSessaoId('');
       setForceOverCapacity(false);
@@ -70,10 +83,32 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     setMotivoUrgencia('');
     setObservacoes('');
     setPlaceAsPriority(false);
+
+    setDiasDisponiveis([1, 2, 3, 4, 5, 6]);
+    setPeriodosDisponiveis(['tarde', 'noite']);
+    setDatasIndisponiveisText('');
+    setObservacoesDisponibilidade('');
+
     setDataProgramacao('');
     setSessaoId('');
     setForceOverCapacity(false);
     setErrorMsg('');
+  };
+
+  const toggleDay = (dayNum) => {
+    if (diasDisponiveis.includes(dayNum)) {
+      setDiasDisponiveis(diasDisponiveis.filter(d => d !== dayNum));
+    } else {
+      setDiasDisponiveis([...diasDisponiveis, dayNum]);
+    }
+  };
+
+  const togglePeriod = (periodStr) => {
+    if (periodosDisponiveis.includes(periodStr)) {
+      setPeriodosDisponiveis(periodosDisponiveis.filter(p => p !== periodStr));
+    } else {
+      setPeriodosDisponiveis([...periodosDisponiveis, periodStr]);
+    }
   };
 
   if (!isOpen) return null;
@@ -93,6 +128,18 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     setLoading(true);
     setErrorMsg('');
 
+    const parsedDatasIndisponiveis = datasIndisponiveisText
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+
+    const payloadDisponibilidade = {
+      dias_disponiveis: diasDisponiveis,
+      periodos_disponiveis: periodosDisponiveis,
+      datas_indisponiveis: parsedDatasIndisponiveis.length > 0 ? parsedDatasIndisponiveis : null,
+      observacoes_disponibilidade: observacoesDisponibilidade.trim() || null,
+    };
+
     try {
       if (editingPerson) {
         await atendimentoService.updatePessoa(
@@ -105,11 +152,11 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             prioridade,
             motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
             observacoes: observacoes.trim() || null,
+            ...payloadDisponibilidade,
           }
         );
         onSaved('Pessoa atualizada com sucesso!');
       } else if (prioridade === 'Urgente' && dataProgramacao && sessaoId) {
-        // Opção 4: Programação Imediata de Urgência
         const selectedAtividade = atividades.find(a => a.id === sessaoId);
         if (!selectedAtividade) {
           setErrorMsg('Selecione uma sessão válida para a programação imediata.');
@@ -129,11 +176,11 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           startTime: selectedAtividade.start_time,
           endTime: selectedAtividade.end_time,
           forceOverCapacity,
+          ...payloadDisponibilidade,
         });
 
         onSaved('Pessoa cadastrada e programada com sucesso para a sessão escolhida!');
       } else {
-        // Comportamento normal de cadastro na fila
         await atendimentoService.createPessoa(
           {
             nome: nome.trim(),
@@ -143,6 +190,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             prioridade,
             motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
             observacoes: observacoes.trim() || null,
+            ...payloadDisponibilidade,
           },
           { placeAsPriority }
         );
@@ -157,9 +205,19 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     }
   };
 
+  const DAYS = [
+    { num: 1, label: 'Seg' },
+    { num: 2, label: 'Ter' },
+    { num: 3, label: 'Qua' },
+    { num: 4, label: 'Qui' },
+    { num: 5, label: 'Sex' },
+    { num: 6, label: 'Sáb' },
+    { num: 0, label: 'Dom' },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 border border-gray-100 shadow-2xl my-8 animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 border border-gray-100 shadow-2xl my-8 animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b border-gray-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
@@ -184,75 +242,169 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-              Nome Completo *
-            </label>
-            <input
-              type="text"
-              placeholder="Ex: Maria das Graças Silva"
-              value={nome}
-              onChange={e => setNome(e.target.value)}
-              required
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
+          {/* Dados Principais */}
+          <div className="space-y-4">
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-                Telefone / WhatsApp (Opcional)
+                Nome Completo *
               </label>
               <input
                 type="text"
-                placeholder="(11) 90000-0000"
-                value={telefone}
-                onChange={e => setTelefone(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-                Data de Entrada
-              </label>
-              <input
-                type="date"
-                value={dataEntrada}
-                onChange={e => setDataEntrada(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-                Tipo de Atendimento
-              </label>
-              <input
-                type="text"
-                value={tipoAtendimento}
-                onChange={e => setTipoAtendimento(e.target.value)}
+                placeholder="Ex: Maria das Graças Silva"
+                value={nome}
+                onChange={e => setNome(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
               />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                  Telefone / WhatsApp (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="(11) 90000-0000"
+                  value={telefone}
+                  onChange={e => setTelefone(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                  Data de Entrada
+                </label>
+                <input
+                  type="date"
+                  value={dataEntrada}
+                  onChange={e => setDataEntrada(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                  Tipo de Atendimento
+                </label>
+                <input
+                  type="text"
+                  value={tipoAtendimento}
+                  onChange={e => setTipoAtendimento(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                  Prioridade
+                </label>
+                <select
+                  value={prioridade}
+                  onChange={e => setPrioridade(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="Urgente">Urgente</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 2: Disponibilidade do Paciente (Opcional) */}
+          <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-3">
+            <div className="flex items-center gap-2 text-primary font-bold text-xs">
+              <span className="material-symbols-outlined text-base">event_available</span>
+              Disponibilidade do Paciente (Opcional)
+            </div>
+
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-                Prioridade
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
+                Dias da semana disponíveis
               </label>
-              <select
-                value={prioridade}
-                onChange={e => setPrioridade(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
-              >
-                <option value="Normal">Normal</option>
-                <option value="Urgente">Urgente</option>
-              </select>
+              <div className="flex flex-wrap gap-1.5">
+                {DAYS.map(d => {
+                  const isSel = diasDisponiveis.includes(d.num);
+                  return (
+                    <button
+                      key={d.num}
+                      type="button"
+                      onClick={() => toggleDay(d.num)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        isSel
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'bg-white text-gray-400 border border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                  Períodos disponíveis
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => togglePeriod('tarde')}
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      periodosDisponiveis.includes('tarde')
+                        ? 'bg-primary text-white'
+                        : 'bg-white text-gray-400 border border-gray-200'
+                    }`}
+                  >
+                    Tarde (&lt; 18h)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => togglePeriod('noite')}
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      periodosDisponiveis.includes('noite')
+                        ? 'bg-primary text-white'
+                        : 'bg-white text-gray-400 border border-gray-200'
+                    }`}
+                  >
+                    Noite (&ge; 18h)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                  Datas Indisponíveis (separadas por vírgula)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 2026-08-15, 2026-08-20"
+                  value={datasIndisponiveisText}
+                  onChange={e => setDatasIndisponiveisText(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-primary outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                Observações de Disponibilidade
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Não pode no dia 15 nem na primeira semana do mês"
+                value={observacoesDisponibilidade}
+                onChange={e => setObservacoesDisponibilidade(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 outline-none"
+              />
             </div>
           </div>
 
@@ -346,7 +498,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
 
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
-              Observações (Opcional)
+              Observações Internas (Opcional)
             </label>
             <textarea
               rows="2"
