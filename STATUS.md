@@ -55,8 +55,10 @@ $$;
 *   `pre_cadastros`: E-mails pré-aprovados pela diretoria. Sem estar aqui, nenhum e-mail externo consegue fazer login.
 *   `atividades`: Agenda da casa. Colunas: `id`, `name`, `time_range`, `start_time`, `end_time`, `description`, `day_of_week` (0=Dom, 1=Seg…6=Sáb), `event_date` (DATE NULL para extras), `active` (BOOLEAN), `icon`, `created_at`.
 *   `presencas`: Confirmações e presenças dos voluntários. Colunas: `id`, `user_id` (FK→profiles), `atividade_id` (FK→atividades), `checkin_time` (default `now()`), `qr_checkin` (boolean, default `false`).
-*   `reflexao_diaria`: Uma única linha (`id=1`) com a frase do dia (`quote`, `author`, `image_url`).
-*   `mensagens`: Mural/chat em tempo real. Colunas: `id`, `profile_id`, `content`, `is_broadcast`, `created_at`.
+*   `atendimento_pessoas`: Pessoas da Fila de Atendimento Público. Colunas: `id`, `nome`, `telefone`, `tipo_atendimento`, `prioridade` (`Normal` | `Urgente`), `motivo_urgencia`, `observacoes`, `data_entrada`, `status` (`aguardando`, `programado`, `compareceu`, `atendido`, `nao_compareceu`, `cancelado`), `posicao_fila`, `created_at`, `updated_at`.
+*   `atendimento_programacoes`: Agendamento de pacientes em sessões específicas. Colunas: `id`, `pessoa_id`, `atividade_id`, `event_date`, `start_time`, `end_time`, `ordem_sessao`, `prioridade`, `status`, `observacoes`, `created_at`, `updated_at`.
+*   `atendimento_capacidades`: Vagas máximas configuradas por sessão/atividade. Colunas: `id`, `atividade_id`, `capacidade`, `active`, `created_at`, `updated_at`.
+*   `atendimento_historico`: Log imutável de auditoria. Colunas: `id`, `pessoa_id`, `programacao_id`, `admin_id`, `action`, `dados_anteriores`, `dados_novos`, `observacao`, `created_at`.
 
 > **Nota:** A tabela `escalas` foi planejada mas **nunca foi criada**. Não referenciar essa tabela em código ou RLS.
 
@@ -73,12 +75,16 @@ $$;
 - UPDATE: `user_id = auth.uid()`
 - DELETE: `user_id = auth.uid() AND qr_checkin = false`
 
+**atendimento_* (todas as 4 tabelas):**
+- SELECT, INSERT, UPDATE, DELETE: `is_admin()` (restrito 100% a administradores; voluntários não têm acesso)
+
 ### Scripts de dados:
 *   `migration_agenda.sql` — adiciona colunas `active`, `event_date`, `start_time`, `end_time`, índices, constraints e popula a nova grade regular de Apometria (Ter/Qua/Qui).
+*   `migration_fila_atendimento.sql` — cria as tabelas `atendimento_pessoas`, `atendimento_programacoes`, `atendimento_capacidades` e `atendimento_historico` com RLS restrito a `is_admin()`.
 
 ---
 *Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.7 — Nova grade de Apometria, suporte a atendimentos extras em datas específicas, inclusão de Domingo na agenda e nova aba de gerenciamento da Agenda na Administração**.*
+*Fase atual: **V 1.8 — Módulo administrativo "Fila de Atendimento" para substituição do caderno físico, controle de posição de fila, previsão aproximada de espera, vagas por sessão, urgência/remanejamento e auditoria em tempo real**.*
 
 ## 3. Fluxo de Presença (IMPORTANTE)
 

@@ -1,0 +1,271 @@
+import React, { useState, useEffect } from 'react';
+import { atendimentoService } from '../../lib/atendimentoService';
+import { useAuth } from '../../context/AuthContext';
+
+const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved }) => {
+  const { profile } = useAuth();
+
+  const [nome, setNome] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [dataEntrada, setDataEntrada] = useState(new Date().toISOString().split('T')[0]);
+  const [tipoAtendimento, setTipoAtendimento] = useState('Apometria');
+  const [prioridade, setPrioridade] = useState('Normal');
+  const [motivoUrgencia, setMotivoUrgencia] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [placeAsPriority, setPlaceAsPriority] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (editingPerson) {
+      setNome(editingPerson.nome || '');
+      setTelefone(editingPerson.telefone || '');
+      setDataEntrada(editingPerson.data_entrada || new Date().toISOString().split('T')[0]);
+      setTipoAtendimento(editingPerson.tipo_atendimento || 'Apometria');
+      setPrioridade(editingPerson.prioridade || 'Normal');
+      setMotivoUrgencia(editingPerson.motivo_urgencia || '');
+      setObservacoes(editingPerson.observacoes || '');
+      setPlaceAsPriority(false);
+    } else {
+      resetForm();
+    }
+  }, [editingPerson, isOpen]);
+
+  const resetForm = () => {
+    setNome('');
+    setTelefone('');
+    setDataEntrada(new Date().toISOString().split('T')[0]);
+    setTipoAtendimento('Apometria');
+    setPrioridade('Normal');
+    setMotivoUrgencia('');
+    setObservacoes('');
+    setPlaceAsPriority(false);
+    setErrorMsg('');
+  };
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!nome.trim()) {
+      setErrorMsg('Por favor, informe o nome completo.');
+      return;
+    }
+
+    if (prioridade === 'Urgente' && !motivoUrgencia.trim()) {
+      setErrorMsg('Para atendimentos urgentes, o motivo da urgência é obrigatório.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      if (editingPerson) {
+        await atendimentoService.updatePessoa(
+          editingPerson.id,
+          {
+            nome: nome.trim(),
+            telefone: telefone.trim() || null,
+            data_entrada: dataEntrada,
+            tipo_atendimento: tipoAtendimento,
+            prioridade,
+            motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
+            observacoes: observacoes.trim() || null,
+          },
+          profile.id
+        );
+        onSaved('Pessoa atualizada com sucesso!');
+      } else {
+        await atendimentoService.createPessoa(
+          {
+            nome: nome.trim(),
+            telefone: telefone.trim() || null,
+            data_entrada: dataEntrada,
+            tipo_atendimento: tipoAtendimento,
+            prioridade,
+            motivo_urgencia: prioridade === 'Urgente' ? motivoUrgencia.trim() : null,
+            observacoes: observacoes.trim() || null,
+          },
+          profile.id,
+          { placeAsPriority }
+        );
+        onSaved('Pessoa cadastrada na fila com sucesso!');
+      }
+      resetForm();
+      onClose();
+    } catch (err) {
+      setErrorMsg(err.message || 'Erro ao salvar cadastro.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 border border-gray-100 shadow-2xl my-8 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl">person_add</span>
+            </div>
+            <div>
+              <h3 className="font-headline font-bold text-lg text-primary">
+                {editingPerson ? 'Editar Cadastro' : 'Cadastrar Pessoa na Fila'}
+              </h3>
+              <p className="text-xs text-gray-400">Preencha os dados do paciente para controle da fila.</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {errorMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+              Nome Completo *
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: Maria das Graças Silva"
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              required
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                Telefone / WhatsApp (Opcional)
+              </label>
+              <input
+                type="text"
+                placeholder="(11) 90000-0000"
+                value={telefone}
+                onChange={e => setTelefone(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                Data de Entrada
+              </label>
+              <input
+                type="date"
+                value={dataEntrada}
+                onChange={e => setDataEntrada(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                Tipo de Atendimento
+              </label>
+              <input
+                type="text"
+                value={tipoAtendimento}
+                onChange={e => setTipoAtendimento(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+                Prioridade
+              </label>
+              <select
+                value={prioridade}
+                onChange={e => setPrioridade(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+              >
+                <option value="Normal">Normal</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+            </div>
+          </div>
+
+          {prioridade === 'Urgente' && (
+            <div className="space-y-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-200 animate-in fade-in">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block mb-1">
+                  Motivo da Urgência *
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Descreva o motivo pelo qual a pessoa necessita de urgência..."
+                  value={motivoUrgencia}
+                  onChange={e => setMotivoUrgencia(e.target.value)}
+                  required
+                  className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 outline-none text-xs font-medium text-amber-950"
+                />
+              </div>
+
+              {!editingPerson && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="placeAsPriority"
+                    checked={placeAsPriority}
+                    onChange={e => setPlaceAsPriority(e.target.checked)}
+                    className="w-4 h-4 text-primary rounded focus:ring-primary"
+                  />
+                  <label htmlFor="placeAsPriority" className="text-xs font-bold text-amber-900 cursor-pointer">
+                    Inserir na 1ª posição da fila de espera
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">
+              Observações (Opcional)
+            </label>
+            <textarea
+              rows="2"
+              placeholder="Anotações internas da Casa..."
+              value={observacoes}
+              onChange={e => setObservacoes(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-xs font-medium text-gray-700"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading ? 'Salvar...' : (editingPerson ? 'Salvar Alterações' : 'Cadastrar Pessoa')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ModalCadastroPessoa;

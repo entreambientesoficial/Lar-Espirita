@@ -3,6 +3,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import { supabase, dataService } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { CHECKIN_TOKEN } from '../lib/checkinToken';
+import FilaEspera from '../components/atendimento/FilaEspera';
+import ProgramacaoSessoes from '../components/atendimento/ProgramacaoSessoes';
+import AtendimentosDia from '../components/atendimento/AtendimentosDia';
+import HistoricoAtendimentos from '../components/atendimento/HistoricoAtendimentos';
 
 export const formatPhone = (value) => {
   if (!value) return '';
@@ -24,7 +28,8 @@ const DAY_NAMES = {
 
 const Admin = () => {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState('presenca'); 
+  const [activeTab, setActiveTab] = useState('presenca');
+  const [filaSubTab, setFilaSubTab] = useState('espera'); 
   const [presences, setPresences] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,6 +352,9 @@ const Admin = () => {
         </button>
         <button onClick={() => setActiveTab('agenda')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'agenda' ? 'text-primary' : 'text-gray-400'}`}>
           Agenda {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        </button>
+        <button onClick={() => setActiveTab('fila')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'fila' ? 'text-primary' : 'text-gray-400'}`}>
+          Fila de Atendimento {activeTab === 'fila' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
         <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
           Reflexão do Dia {activeTab === 'reflexao' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
@@ -755,6 +763,62 @@ const Admin = () => {
               </table>
             </div>
           </div>
+        </div>
+      ) : activeTab === 'fila' ? (
+        /* Fila de Atendimento Tab */
+        <div className="space-y-8 animate-in fade-in">
+          {/* Sub-Navegação interna da Fila */}
+          <div className="flex gap-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setFilaSubTab('espera')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                filaSubTab === 'espera' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">hourglass_top</span>
+              1. Fila de Espera
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilaSubTab('programados')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                filaSubTab === 'programados' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">event_note</span>
+              2. Atendimentos Programados
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilaSubTab('dia')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                filaSubTab === 'dia' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">today</span>
+              3. Atendimentos do Dia
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFilaSubTab('historico')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                filaSubTab === 'historico' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">history</span>
+              4. Histórico
+            </button>
+          </div>
+
+          {/* Render das 4 áreas */}
+          {filaSubTab === 'espera' && <FilaEspera onShowToast={showToast} />}
+          {filaSubTab === 'programados' && <ProgramacaoSessoes onShowToast={showToast} />}
+          {filaSubTab === 'dia' && <AtendimentosDia onShowToast={showToast} />}
+          {filaSubTab === 'historico' && <HistoricoAtendimentos onShowToast={showToast} />}
         </div>
       ) : activeTab === 'reflexao' ? (
         /* Reflection Tab */
