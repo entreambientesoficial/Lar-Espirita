@@ -222,7 +222,9 @@ const ModalReagendarAtendimento = ({ isOpen, onClose, programacaoItem, onResched
         forceOverCapacity,
       });
 
-      onRescheduled(`Atendimento de ${pessoa?.nome} reagendado com sucesso para ${eventDate.split('-').reverse().join('/')}!`);
+      const formattedDate = eventDate.split('-').reverse().join('/');
+      const formattedTime = atividade.start_time ? atividade.start_time.slice(0, 5) : '13:30';
+      onRescheduled(`Atendimento reagendado com sucesso para ${formattedDate} às ${formattedTime}.`);
       onClose();
     } catch (err) {
       setErrorMsg(err.message || 'Erro ao reagendar atendimento.');

@@ -12,6 +12,9 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   // Estado do Accordion de Configuração de Vagas (Fechado por padrão)
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
+  // Filtro discreto: mostrar cancelados e finalizados (Desativado por padrão)
+  const [showAllStatus, setShowAllStatus] = useState(false);
+
   // Estados para edição por sessão: { [atividadeId]: { qSalas: number, aPorSala: number } }
   const [editingCapMap, setEditingCapMap] = useState({});
   const [savingCapId, setSavingCapId] = useState(null);
@@ -108,23 +111,47 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   const numSessoes = capacidades.length;
   const avgVagasPorSessao = numSessoes > 0 ? Math.round(totalWeeklyCapacity / numSessoes) : 9;
 
+  // Filtragem padrão: exibe apenas 'programado' e 'compareceu'. Oculta cancelados e atendidos a menos que ativado.
+  const filteredProgramacoes = (programacoes || []).filter(p => {
+    if (showAllStatus) return true;
+    return ['programado', 'compareceu'].includes(p.status);
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in">
       {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Foco na operação diária) */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600">event</span>
             Todos os Atendimentos Programados
           </h3>
-          <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {programacoes.filter(p => p.status === 'programado').length} ativos
-          </span>
+          
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setShowAllStatus(!showAllStatus)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                showAllStatus
+                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-sm'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">
+                {showAllStatus ? 'visibility' : 'visibility_off'}
+              </span>
+              Mostrar cancelados e finalizados
+            </button>
+
+            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              {programacoes.filter(p => ['programado', 'compareceu'].includes(p.status)).length} ativos
+            </span>
+          </div>
         </div>
 
         {loading ? (
           <div className="py-12 text-center text-gray-400 italic">Carregando agendamentos...</div>
-        ) : programacoes.length > 0 ? (
+        ) : filteredProgramacoes.length > 0 ? (
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
             <table className="w-full text-left min-w-[750px]">
               <thead>
@@ -138,7 +165,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {programacoes.map(p => {
+                {filteredProgramacoes.map(p => {
                   const activityName = p.atividades?.name || 'Apometria';
                   const dow = p.atividades?.day_of_week;
                   const roomNum = getRoomNum(dow);
