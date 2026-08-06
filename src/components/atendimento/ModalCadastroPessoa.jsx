@@ -15,9 +15,10 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
   const [observacoes, setObservacoes] = useState('');
   const [placeAsPriority, setPlaceAsPriority] = useState(false);
 
-  // Campos de Disponibilidade (Opcionais)
-  const [diasDisponiveis, setDiasDisponiveis] = useState([1, 2, 3, 4, 5, 6]); // Padrão todos os dias
-  const [periodosDisponiveis, setPeriodosDisponiveis] = useState(['tarde', 'noite']); // Padrão tarde e noite
+  // Seção Recolhível de Disponibilidade (Opcional)
+  const [isDisponibilidadeOpen, setIsDisponibilidadeOpen] = useState(false);
+  const [diasDisponiveis, setDiasDisponiveis] = useState([]); // Vazio = sem restrição (disponibilidade geral)
+  const [periodosDisponiveis, setPeriodosDisponiveis] = useState([]); // Vazio = sem restrição
   const [datasIndisponiveisText, setDatasIndisponiveisText] = useState('');
   const [observacoesDisponibilidade, setObservacoesDisponibilidade] = useState('');
 
@@ -48,10 +49,17 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
       setPlaceAsPriority(false);
 
       // Disponibilidade
-      setDiasDisponiveis(Array.isArray(editingPerson.dias_disponiveis) ? editingPerson.dias_disponiveis : [1, 2, 3, 4, 5, 6]);
-      setPeriodosDisponiveis(Array.isArray(editingPerson.periodos_disponiveis) ? editingPerson.periodos_disponiveis : ['tarde', 'noite']);
-      setDatasIndisponiveisText(Array.isArray(editingPerson.datas_indisponiveis) ? editingPerson.datas_indisponiveis.join(', ') : '');
+      const hasDays = Array.isArray(editingPerson.dias_disponiveis) && editingPerson.dias_disponiveis.length > 0;
+      const hasPeriods = Array.isArray(editingPerson.periodos_disponiveis) && editingPerson.periodos_disponiveis.length > 0;
+      const hasDates = Array.isArray(editingPerson.datas_indisponiveis) && editingPerson.datas_indisponiveis.length > 0;
+      const hasObs = !!editingPerson.observacoes_disponibilidade;
+
+      setDiasDisponiveis(hasDays ? editingPerson.dias_disponiveis : []);
+      setPeriodosDisponiveis(hasPeriods ? editingPerson.periodos_disponiveis : []);
+      setDatasIndisponiveisText(hasDates ? editingPerson.datas_indisponiveis.join(', ') : '');
       setObservacoesDisponibilidade(editingPerson.observacoes_disponibilidade || '');
+
+      setIsDisponibilidadeOpen(hasDays || hasPeriods || hasDates || hasObs);
 
       setDataProgramacao('');
       setSessaoId('');
@@ -84,8 +92,9 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     setObservacoes('');
     setPlaceAsPriority(false);
 
-    setDiasDisponiveis([1, 2, 3, 4, 5, 6]);
-    setPeriodosDisponiveis(['tarde', 'noite']);
+    setIsDisponibilidadeOpen(false);
+    setDiasDisponiveis([]);
+    setPeriodosDisponiveis([]);
     setDatasIndisponiveisText('');
     setObservacoesDisponibilidade('');
 
@@ -109,6 +118,27 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     } else {
       setPeriodosDisponiveis([...periodosDisponiveis, periodStr]);
     }
+  };
+
+  const getDisponibilidadeSummary = () => {
+    const parts = [];
+    if (diasDisponiveis.length > 0) {
+      const DAY_LABELS = { 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb', 0: 'Dom' };
+      const diasStr = diasDisponiveis.map(d => DAY_LABELS[d]).join(', ');
+      parts.push(`Dias: ${diasStr}`);
+    }
+    if (periodosDisponiveis.length > 0) {
+      parts.push(`Período: ${periodosDisponiveis.join(', ')}`);
+    }
+    if (datasIndisponiveisText.trim()) {
+      parts.push(`Datas registradas`);
+    }
+    if (observacoesDisponibilidade.trim()) {
+      parts.push(`Obs cadastrada`);
+    }
+
+    if (parts.length === 0) return null;
+    return parts.join(' | ');
   };
 
   if (!isOpen) return null;
@@ -146,8 +176,8 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
       .filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
 
     const payloadDisponibilidade = {
-      dias_disponiveis: diasDisponiveis,
-      periodos_disponiveis: periodosDisponiveis,
+      dias_disponiveis: diasDisponiveis.length > 0 ? diasDisponiveis : null,
+      periodos_disponiveis: periodosDisponiveis.length > 0 ? periodosDisponiveis : null,
       datas_indisponiveis: parsedDatasIndisponiveis.length > 0 ? parsedDatasIndisponiveis : null,
       observacoes_disponibilidade: observacoesDisponibilidade.trim() || null,
     };
@@ -228,13 +258,13 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in duration-200">
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden"
+        className="bg-white w-full sm:max-w-xl max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 overflow-hidden"
       >
         {/* 1. Cabeçalho Fixo (Sempre Visível) */}
-        <div className="flex items-center justify-between p-6 sm:px-8 border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between p-5 sm:px-6 border-b border-gray-100 shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
               <span className="material-symbols-outlined text-xl">person_add</span>
@@ -246,13 +276,13 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
               <p className="text-xs text-gray-400">Informe os dados da pessoa para inclusão na fila de atendimento.</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
-            <span className="material-symbols-outlined text-sm">close</span>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors">
+            <span className="material-symbols-outlined text-base">close</span>
           </button>
         </div>
 
         {/* 2. Corpo do Formulário com Rolagem Interna */}
-        <div className="flex-1 overflow-y-auto p-6 sm:px-8 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 sm:px-6 space-y-4">
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
               <span className="material-symbols-outlined text-sm">error</span>
@@ -334,95 +364,126 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             </div>
           </div>
 
-          {/* Seção 2: Disponibilidade da Pessoa (Opcional) */}
-          <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-3">
-            <div className="flex items-center gap-2 text-primary font-bold text-xs">
-              <span className="material-symbols-outlined text-base">event_available</span>
-              Disponibilidade da Pessoa (Opcional)
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
-                Dias da semana disponíveis
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {DAYS.map(d => {
-                  const isSel = diasDisponiveis.includes(d.num);
-                  return (
-                    <button
-                      key={d.num}
-                      type="button"
-                      onClick={() => toggleDay(d.num)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        isSel
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'bg-white text-gray-400 border border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      {d.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
-                  Períodos disponíveis
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => togglePeriod('tarde')}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      periodosDisponiveis.includes('tarde')
-                        ? 'bg-primary text-white'
-                        : 'bg-white text-gray-400 border border-gray-200'
-                    }`}
-                  >
-                    Tarde (&lt; 18h)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => togglePeriod('noite')}
-                    className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      periodosDisponiveis.includes('noite')
-                        ? 'bg-primary text-white'
-                        : 'bg-white text-gray-400 border border-gray-200'
-                    }`}
-                  >
-                    Noite (&ge; 18h)
-                  </button>
+          {/* Seção 2: Restrições de Disponibilidade (Recolhível) */}
+          <div className="bg-blue-50/40 rounded-2xl border border-blue-100 overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => setIsDisponibilidadeOpen(!isDisponibilidadeOpen)}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-blue-50/80 transition-colors"
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-primary text-lg mt-0.5">event_available</span>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-primary">
+                      Restrições de disponibilidade (Opcional)
+                    </span>
+                    {getDisponibilidadeSummary() && !isDisponibilidadeOpen && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full">
+                        {getDisponibilidadeSummary()}
+                      </span>
+                    )}
+                  </div>
+                  {!isDisponibilidadeOpen && !getDisponibilidadeSummary() && (
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Informe apenas se a pessoa não puder comparecer em determinados dias ou períodos.
+                    </p>
+                  )}
                 </div>
               </div>
+              <span className={`material-symbols-outlined text-gray-400 transition-transform duration-200 shrink-0 ${
+                isDisponibilidadeOpen ? 'rotate-180' : ''
+              }`}>
+                expand_more
+              </span>
+            </button>
 
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
-                  Datas Indisponíveis (separadas por vírgula)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: 2026-08-15, 2026-08-20"
-                  value={datasIndisponiveisText}
-                  onChange={e => setDatasIndisponiveisText(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-primary outline-none"
-                />
+            {isDisponibilidadeOpen && (
+              <div className="px-4 pb-4 pt-1 border-t border-blue-100/60 space-y-3 animate-in fade-in">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1.5">
+                    Dias da semana disponíveis
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DAYS.map(d => {
+                      const isSel = diasDisponiveis.includes(d.num);
+                      return (
+                        <button
+                          key={d.num}
+                          type="button"
+                          onClick={() => toggleDay(d.num)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            isSel
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'bg-white text-gray-400 border border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                      Períodos disponíveis
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePeriod('tarde')}
+                        className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          periodosDisponiveis.includes('tarde')
+                            ? 'bg-primary text-white'
+                            : 'bg-white text-gray-400 border border-gray-200'
+                        }`}
+                      >
+                        Tarde (&lt; 18h)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => togglePeriod('noite')}
+                        className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          periodosDisponiveis.includes('noite')
+                            ? 'bg-primary text-white'
+                            : 'bg-white text-gray-400 border border-gray-200'
+                        }`}
+                      >
+                        Noite (&ge; 18h)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                      Datas Indisponíveis (vírgula)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 2026-08-15, 2026-08-20"
+                      value={datasIndisponiveisText}
+                      onChange={e => setDatasIndisponiveisText(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                    Observações de Disponibilidade
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Não pode no dia 15 nem na primeira semana do mês"
+                    value={observacoesDisponibilidade}
+                    onChange={e => setObservacoesDisponibilidade(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 outline-none"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
-                Observações de Disponibilidade
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Não pode no dia 15 nem na primeira semana do mês"
-                value={observacoesDisponibilidade}
-                onChange={e => setObservacoesDisponibilidade(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 outline-none"
-              />
-            </div>
+            )}
           </div>
 
           {prioridade === 'Urgente' && (
@@ -527,8 +588,8 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           </div>
         </div>
 
-        {/* 3. Rodapé Fixo (Sempre Visível no Final do Modal) */}
-        <div className="p-4 sm:px-8 border-t border-gray-100 bg-gray-50/50 flex items-center gap-3 shrink-0">
+        {/* 3. Rodapé Fixo (Fica acima da navegação inferior do celular com safe-area) */}
+        <div className="p-4 sm:px-6 border-t border-gray-100 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.04)] flex items-center gap-3 shrink-0 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
           <button
             type="button"
             onClick={onClose}
