@@ -56,6 +56,20 @@ const Admin = () => {
   const [savingActivity, setSavingActivity] = useState(false);
   const [showInactiveActivities, setShowInactiveActivities] = useState(false);
 
+  // Estados de Toast Notification e Modal de Confirmação
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   useEffect(() => {
     fetchInitialData();
     const channel = supabase
@@ -114,18 +128,18 @@ const Admin = () => {
     if (editingActivity) {
       const { error } = await dataService.updateActivity(editingActivity.id, payload);
       if (error) {
-        alert("Erro ao atualizar atividade: " + error.message);
+        showToast("Erro ao atualizar atendimento: " + error.message, "error");
       } else {
-        alert("Atividade atualizada com sucesso!");
+        showToast("Atendimento atualizado com sucesso.", "success");
         resetActForm();
         loadAdminActivities();
       }
     } else {
       const { error } = await dataService.createActivity(payload);
       if (error) {
-        alert("Erro ao cadastrar atividade: " + error.message);
+        showToast("Erro ao cadastrar atendimento: " + error.message, "error");
       } else {
-        alert(isExtraForm ? "Atendimento Extra cadastrado com sucesso!" : "Atividade Regular cadastrada com sucesso!");
+        showToast("Atendimento cadastrado com sucesso.", "success");
         resetActForm();
         loadAdminActivities();
       }
@@ -134,31 +148,42 @@ const Admin = () => {
   };
 
   const handleToggleActive = async (item) => {
-    const { error } = await dataService.toggleActivityActive(item.id, item.active !== false);
+    const isDeactivating = item.active !== false;
+    const { error } = await dataService.toggleActivityActive(item.id, isDeactivating);
     if (error) {
-      alert("Erro ao alterar status: " + error.message);
+      showToast("Erro ao alterar status: " + error.message, "error");
     } else {
+      showToast(
+        isDeactivating ? "Atendimento desativado com sucesso." : "Atendimento ativado com sucesso.",
+        "success"
+      );
       loadAdminActivities();
     }
   };
 
   const handleDeleteActivity = async (item) => {
-    const msg = item.event_date 
+    const title = item.event_date ? "Excluir Atendimento Extra" : "Desativar Atendimento";
+    const message = item.event_date 
       ? `Deseja excluir o atendimento extra "${item.name}" do dia ${item.event_date}?` 
       : `Deseja desativar a atividade regular "${item.name}"?`;
-    
-    if (window.confirm(msg)) {
-      const { deactivated, error } = await dataService.deleteActivity(item.id);
-      if (error) {
-        alert("Erro: " + error.message);
-      } else if (deactivated) {
-        alert("Esta atividade possui presenças registradas no histórico. Ela foi desativada em vez de excluída fisicamente.");
-        loadAdminActivities();
-      } else {
-        alert("Atendimento removido com sucesso!");
-        loadAdminActivities();
+
+    setConfirmModal({
+      title,
+      message,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const { deactivated, error } = await dataService.deleteActivity(item.id);
+        if (error) {
+          showToast("Erro: " + error.message, "error");
+        } else if (deactivated) {
+          showToast("Atividade desativada (possui presenças registradas no histórico).", "info");
+          loadAdminActivities();
+        } else {
+          showToast("Atendimento removido com sucesso.", "success");
+          loadAdminActivities();
+        }
       }
-    }
+    });
   };
 
   const startEditActivity = (item) => {
@@ -860,6 +885,59 @@ const Admin = () => {
           </div>
         </div>
       ) : null}
+
+      {/* Toast Notification Container */}
+      {toast && (
+        <div className="fixed top-6 right-6 left-6 md:left-auto md:max-w-md z-50 bg-white border border-gray-100 shadow-2xl rounded-2xl p-4 flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              toast.type === 'error' ? 'bg-red-50 text-red-600' :
+              toast.type === 'info' ? 'bg-amber-50 text-amber-600' :
+              'bg-emerald-50 text-emerald-600'
+            }`}>
+              <span className="material-symbols-outlined text-xl">
+                {toast.type === 'error' ? 'error' : toast.type === 'info' ? 'info' : 'check_circle'}
+              </span>
+            </div>
+            <p className="text-xs font-bold text-primary leading-snug">{toast.message}</p>
+          </div>
+          <button 
+            onClick={() => setToast(null)} 
+            className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-5 border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-2xl">help_outline</span>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-headline font-bold text-lg text-primary">{confirmModal.title}</h4>
+              <p className="text-xs text-gray-500 leading-relaxed font-medium">{confirmModal.message}</p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
