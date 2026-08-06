@@ -125,6 +125,18 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
       return;
     }
 
+    // Validações da Programação Imediata para Urgências
+    if (prioridade === 'Urgente' && !editingPerson) {
+      if (sessaoId && !dataProgramacao) {
+        setErrorMsg('Por favor, informe a data do atendimento para realizar a programação imediata.');
+        return;
+      }
+      if (dataProgramacao && !sessaoId) {
+        setErrorMsg('Por favor, selecione uma sessão para realizar a programação imediata.');
+        return;
+      }
+    }
+
     setLoading(true);
     setErrorMsg('');
 
@@ -155,7 +167,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             ...payloadDisponibilidade,
           }
         );
-        onSaved('Pessoa atualizada com sucesso!');
+        onSaved('Cadastro atualizado com sucesso!');
       } else if (prioridade === 'Urgente' && dataProgramacao && sessaoId) {
         const selectedAtividade = atividades.find(a => a.id === sessaoId);
         if (!selectedAtividade) {
@@ -216,9 +228,13 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 border border-gray-100 shadow-2xl my-8 animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden"
+      >
+        {/* 1. Cabeçalho Fixo (Sempre Visível) */}
+        <div className="flex items-center justify-between p-6 sm:px-8 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
               <span className="material-symbols-outlined text-xl">person_add</span>
@@ -227,22 +243,23 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
               <h3 className="font-headline font-bold text-lg text-primary">
                 {editingPerson ? 'Editar Cadastro' : 'Cadastrar Pessoa na Fila'}
               </h3>
-              <p className="text-xs text-gray-400">Preencha os dados do paciente para controle da fila.</p>
+              <p className="text-xs text-gray-400">Preencha os dados da pessoa para controle da fila.</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
 
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">error</span>
-            {errorMsg}
-          </div>
-        )}
+        {/* 2. Corpo do Formulário com Rolagem Interna */}
+        <div className="flex-1 overflow-y-auto p-6 sm:px-8 space-y-5">
+          {errorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">error</span>
+              {errorMsg}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
           {/* Dados Principais */}
           <div className="space-y-4">
             <div>
@@ -317,11 +334,11 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             </div>
           </div>
 
-          {/* Seção 2: Disponibilidade do Paciente (Opcional) */}
+          {/* Seção 2: Disponibilidade da Pessoa (Opcional) */}
           <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-3">
             <div className="flex items-center gap-2 text-primary font-bold text-xs">
               <span className="material-symbols-outlined text-base">event_available</span>
-              Disponibilidade do Paciente (Opcional)
+              Disponibilidade da Pessoa (Opcional)
             </div>
 
             <div>
@@ -508,25 +525,34 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-xs font-medium text-gray-700"
             />
           </div>
+        </div>
 
-          <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {loading ? 'Salvar...' : (editingPerson ? 'Salvar Alterações' : 'Cadastrar Pessoa')}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* 3. Rodapé Fixo (Sempre Visível no Final do Modal) */}
+        <div className="p-4 sm:px-8 border-t border-gray-100 bg-gray-50/50 flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                Salvando...
+              </>
+            ) : (
+              editingPerson ? 'Salvar Alterações' : 'Cadastrar Pessoa'
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
