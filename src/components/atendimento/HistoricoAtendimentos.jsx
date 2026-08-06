@@ -145,7 +145,7 @@ const HistoricoAtendimentos = ({ onShowToast }) => {
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">history</span>
+            <span className="material-symbols-outlined text-amber-600">history</span>
             Histórico Completo de Auditoria
           </h3>
           <p className="text-xs text-gray-500 mt-1">
@@ -192,7 +192,7 @@ const HistoricoAtendimentos = ({ onShowToast }) => {
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-3 py-1.5 bg-primary/5 text-primary text-xs font-extrabold rounded-xl border border-primary/10 inline-block">
+                    <span className="px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-extrabold rounded-xl border border-amber-200/70 inline-block">
                       {formatAcaoRealizada(item)}
                     </span>
                   </td>

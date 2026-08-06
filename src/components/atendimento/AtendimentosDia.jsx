@@ -86,7 +86,7 @@ const AtendimentosDia = ({ onShowToast }) => {
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">today</span>
+            <span className="material-symbols-outlined text-amber-600">today</span>
             Atendimentos do Dia
           </h3>
           <p className="text-xs text-gray-500 mt-1">

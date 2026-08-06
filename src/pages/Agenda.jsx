@@ -118,7 +118,10 @@ const Agenda = () => {
     <main className="max-w-md mx-auto px-6 py-8 space-y-8 font-body">
       {/* Header */}
       <section className="space-y-2 animate-in fade-in duration-700">
-        <h2 className="text-3xl font-extrabold text-primary font-headline tracking-tight">Agenda Semanal</h2>
+        <h2 className="text-3xl font-extrabold text-teal-900 font-headline tracking-tight flex items-center gap-2.5">
+          <span className="material-symbols-outlined text-teal-700 text-3xl">calendar_month</span>
+          Agenda Semanal
+        </h2>
         <p className="text-on-surface-variant font-medium text-xs uppercase tracking-[0.2em]">{selectedDayInfo.month} de 2026</p>
       </section>
 
@@ -132,7 +135,7 @@ const Agenda = () => {
               key={day.id}
               onClick={() => setSelectedDay(day.id)}
               className={`flex flex-col items-center min-w-[54px] p-3 rounded-xl transition-all ${
-                isActive ? 'bg-primary text-white shadow-lg' : 'text-on-surface-variant hover:bg-gray-50'
+                isActive ? 'bg-teal-700 text-white shadow-lg shadow-teal-700/20' : 'text-on-surface-variant hover:bg-gray-50'
               }`}
             >
               <span className="text-[10px] uppercase font-black tracking-widest leading-none mb-1">{day.short}</span>

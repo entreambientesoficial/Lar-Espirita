@@ -125,7 +125,7 @@ const FilaEspera = ({ onShowToast }) => {
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="font-headline font-bold text-2xl text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-2xl">format_list_numbered</span>
+            <span className="material-symbols-outlined text-amber-600 text-2xl">format_list_numbered</span>
             Fila de Espera das Pessoas
           </h3>
           <p className="text-xs text-gray-500 mt-1">
@@ -134,18 +134,18 @@ const FilaEspera = ({ onShowToast }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 text-right">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary block">
+          <div className="bg-amber-50 px-4 py-2 rounded-2xl border border-amber-200/60 text-right">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-800 block">
               Capacidade Semanal
             </span>
-            <span className="text-sm font-black text-primary">
+            <span className="text-sm font-black text-amber-900">
               {totalWeeklyCapacity} vagas/semana
             </span>
           </div>
 
           <button
             onClick={() => handleOpenCadastro()}
-            className="px-5 py-3 bg-primary text-white font-bold rounded-2xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+            className="px-5 py-3 bg-amber-600 text-white font-bold rounded-2xl text-xs shadow-lg shadow-amber-600/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-base">person_add</span>
             Novo Atendimento

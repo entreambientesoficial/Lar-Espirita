@@ -101,7 +101,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">event</span>
+            <span className="material-symbols-outlined text-amber-600">event</span>
             Todos os Atendimentos Programados
           </h3>
           <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">

@@ -344,22 +344,22 @@ const Admin = () => {
 
       {/* Tabs */}
       <div className="flex gap-8 border-b border-gray-200 mb-8 overflow-x-auto">
-        <button onClick={() => setActiveTab('presenca')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'presenca' ? 'text-primary' : 'text-gray-400'}`}>
-          Presenças Hoje {activeTab === 'presenca' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        <button onClick={() => setActiveTab('presenca')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'presenca' ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'}`}>
+          Presenças Hoje {activeTab === 'presenca' && <div className="absolute bottom-0 left-0 w-full h-1 bg-green-600 rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('usuarios')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'usuarios' ? 'text-primary' : 'text-gray-400'}`}>
-          Médiuns e Gestores {activeTab === 'usuarios' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        <button onClick={() => setActiveTab('usuarios')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'usuarios' ? 'text-violet-600' : 'text-gray-400 hover:text-gray-600'}`}>
+          Médiuns e Gestores {activeTab === 'usuarios' && <div className="absolute bottom-0 left-0 w-full h-1 bg-violet-600 rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('agenda')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'agenda' ? 'text-primary' : 'text-gray-400'}`}>
-          Agenda {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        <button onClick={() => setActiveTab('agenda')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'agenda' ? 'text-teal-700' : 'text-gray-400 hover:text-gray-600'}`}>
+          Agenda {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-teal-700 rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('fila')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'fila' ? 'text-primary' : 'text-gray-400'}`}>
-          Fila de Atendimento {activeTab === 'fila' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        <button onClick={() => setActiveTab('fila')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'fila' ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'}`}>
+          Fila de Atendimento {activeTab === 'fila' && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-600 rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}>
           Reflexão do Dia {activeTab === 'reflexao' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('qrcode')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'qrcode' ? 'text-primary' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('qrcode')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'qrcode' ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}>
           QR Code da Casa {activeTab === 'qrcode' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
       </div>
@@ -773,7 +773,7 @@ const Admin = () => {
               type="button"
               onClick={() => setFilaSubTab('espera')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'espera' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                filaSubTab === 'espera' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <span className="material-symbols-outlined text-base">hourglass_top</span>
@@ -784,7 +784,7 @@ const Admin = () => {
               type="button"
               onClick={() => setFilaSubTab('programados')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'programados' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                filaSubTab === 'programados' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <span className="material-symbols-outlined text-base">event_note</span>
@@ -795,7 +795,7 @@ const Admin = () => {
               type="button"
               onClick={() => setFilaSubTab('dia')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'dia' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                filaSubTab === 'dia' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <span className="material-symbols-outlined text-base">today</span>
@@ -806,7 +806,7 @@ const Admin = () => {
               type="button"
               onClick={() => setFilaSubTab('historico')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'historico' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                filaSubTab === 'historico' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <span className="material-symbols-outlined text-base">history</span>

@@ -315,7 +315,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
         {/* 1. Cabeçalho Fixo (Sempre Visível) */}
         <div className="flex items-center justify-between p-5 sm:px-6 border-b border-gray-100 shrink-0 bg-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
               <span className="material-symbols-outlined text-xl">person_add</span>
             </div>
             <div>
@@ -657,7 +657,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-amber-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-amber-600/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
