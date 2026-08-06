@@ -246,5 +246,6 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 - [ ] Validação presencial pelos administradores da Casa durante os atendimentos públicos de Terça, Quarta e Quinta-feira.
 
 ### Pendências Conhecidas / Melhorias Futuras
+- [ ] **Formulário Público por Link (Pré-solicitação)**: Link gerado para Instagram/WhatsApp onde a pessoa solicita atendimento público sem login. Entra como `aguardando_analise` em uma fila prévia de triagem para revisão administrativa antes de ser promovido à Fila de Espera regular.
 - [ ] Módulo Lanchonete (previsto para V2.0).
 - [ ] Relatórios analíticos de frequência e fluxo de atendimento acumulado por mês.
