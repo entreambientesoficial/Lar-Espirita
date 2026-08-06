@@ -4,11 +4,11 @@
 
 ## 1. Visão Geral
 *   **Nome do Projeto:** APP-CENTROESPIRITA (Portal do Voluntário)
-*   **Casa:** Lar Beneficente Eurípedes Barsanulfo
+*   **Casa:** Apometria Elos de Amor e Paz
 *   **Tech Stack:** React 18 (Vite), Tailwind CSS v4, Supabase (Autenticação + Banco de Dados), React Router DOM v7, qrcode.react.
-*   **Propósito:** Sistema web (PWA instalável) para controle de escala, presença, formação e comunicação de voluntários de uma Casa Espírita.
+*   **Propósito:** Sistema web (PWA instalável) para controle de escala, presença, formação e comunicação de voluntários da casa.
 *   **Deploy:** Cloudflare Pages — URL: `https://larbeneficienteeuripedesbarsanulfo.pages.dev`
-*   **Ambiente local:** `npm run dev` na porta 5175. Node.js >= 20 obrigatório.
+*   **Ambiente local:** `npm run dev` na porta 5173 / 5175. Node.js >= 20 obrigatório.
 *   **Build:** `npm run build` → pasta `dist/`. Code splitting: vendor-react, vendor-supabase, vendor-qrcode (html5-qrcode + qrcode.react).
 
 ## 2. Banco de Dados (Supabase)
@@ -93,7 +93,7 @@ O fluxo correto é em **dois passos**:
 ## 4. Páginas e Funcionalidades
 
 ### Acesso Geral (Voluntários)
-*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Fundo responsivo com a imagem espiritual `capa-apometria.jpg` ajustada no modo `bg-contain bg-center`, garantindo que a imagem escale para se encaixar perfeitamente na tela sem cortes. Textos e links auxiliares com micro-pílulas translúcidas escuras (`bg-slate-950/80 backdrop-blur-md`), garantindo 100% de legibilidade e alto contraste. Botão Google com feedback visual de clique.
+*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Título atualizado para "Apometria Elos de Amor e Paz". Logo centralizada (`logo-elos.jpg`) expandida de borda a borda com moldura de vidro fina de 2px e aura luminosa dupla em degradê pulsante. Fundo responsivo com a imagem espiritual `capa-apometria.jpg` em `bg-contain bg-center`. Textos e links auxiliares com micro-pílulas translúcidas escuras (`bg-slate-950/80 backdrop-blur-md`). Botão Google funcional.
 *   **`Layout.jsx`**: Navbar inferior flutuante. Esconde abas de Admin para `role = volunteer`.
 *   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (cursos/telefone) no primeiro acesso. Banner de instalação PWA (Android/Chrome).
 *   **`Agenda.jsx`**: Agenda semanal (Seg–Sáb). Para o dia atual: botão "Confirmar Presença" funcional (insere em `presencas`) ou "Confirmado ✓ + Cancelar". Para outros dias: aviso "Confirmação disponível no dia".
@@ -103,18 +103,18 @@ O fluxo correto é em **dois passos**:
 ### Acesso Restrito (Administração)
 *   **`Admin.jsx`**: Quatro abas:
     1. **Presenças Hoje**: Lista todos que confirmaram presença no dia (com ou sem QR check-in). Colunas: Médium, Atividade, Confirmou às, Check-in QR (Realizado/Pendente). Atualiza via Websocket em tempo real.
-    2. **Médiuns e Gestores**: Formulário de Pré-Cadastro com validação. Gera convite WhatsApp. Controle de Promover/Rebaixar admin (protegido: não remove o último admin).
+    2. **Médiuns e Gestores**: Formulário "Cadastrar Novo Médium" com botão **"Cadastrar"** (gera convite WhatsApp). Controle de Promover/Rebaixar admin (protegido: não remove o último admin).
     3. **Reflexão do Dia**: Live preview. Altera frase e imagem espiritual em tempo real.
-    4. **QR Code da Casa**: Exibe e permite imprimir o QR Code oficial para afixar na Casa.
+    4. **QR Code da Casa**: Exibe e permite imprimir o QR Code oficial da Casa com o título "Apometria Elos de Amor e Paz".
 
 ## 5. PWA (Progressive Web App)
 
 O app é instalável como PWA em dispositivos móveis.
 
-*   **`public/manifest.json`**: Manifesto com nome, ícones, `display: standalone`, `theme_color: #1a237e`.
-*   **`public/sw.js`**: Service Worker mínimo — habilita instalação, passa requisições direto para a rede (sem cache offline).
-*   **`index.html`**: Tags `<link rel="manifest">`, `theme-color`, `apple-mobile-web-app-*` e `apple-touch-icon` configuradas.
-*   **`src/main.jsx`**: Registra o service worker via `navigator.serviceWorker.register('/sw.js')`.
+*   **`public/manifest.json`**: Manifesto configurado com o nome "Portal do Voluntário - Apometria Elos de Amor e Paz", ícones `logo-elos.jpg`, `display: standalone`, `theme_color: #1a237e`.
+*   **`public/sw.js`**: Service Worker — habilita instalação PWA.
+*   **`index.html`**: Título "Portal do Voluntário - Apometria Elos de Amor e Paz", favicon e ícone Apple apontando para `/img-apoio/logo-elos.jpg`.
+*   **`src/main.jsx`**: Registra o service worker apenas em produção (`import.meta.env.PROD`). Em modo dev (`localhost`), desregistra ativamente qualquer ServiceWorker antigo para evitar cache estático indesejado.
 *   **Banner de instalação (Dashboard)**: Captura o evento `beforeinstallprompt` e exibe banner com botão "Instalar" ao usuário. Funciona em Android (Chrome/Edge). No iOS (Safari) o usuário deve usar "Compartilhar → Adicionar à Tela de Início" manualmente.
 
 ## 6. Como Manusear o Código
@@ -138,7 +138,7 @@ O app é instalável como PWA em dispositivos móveis.
 
 **Supabase → Authentication → URL Configuration:**
 *   **Site URL:** `https://larbeneficienteeuripedesbarsanulfo.pages.dev`
-*   **Redirect URLs:** `https://larbeneficienteeuripedesbarsanulfo.pages.dev/dashboard` e `http://localhost:5175/dashboard`
+*   **Redirect URLs:** `https://larbeneficienteeuripedesbarsanulfo.pages.dev/dashboard` e `http://localhost:5173/dashboard`
 
 > `package-lock.json` está no `.gitignore` — gerado localmente no Windows causa falha de build no Linux (Cloudflare). Nunca commitar o lock file.
 
@@ -167,4 +167,4 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 
 ---
 *Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.5 — PWA instalável + imagem de fundo da tela de login (capa -apometria.jpg) ajustada com visibilidade total e alta legibilidade**.*
+*Fase atual: **V 1.6 — Atualização de marca para Apometria Elos de Amor e Paz, nova logo com aura luminosa, botão "Cadastrar" no formulário de médium e ajuste do ServiceWorker em desenvolvimento**.*
