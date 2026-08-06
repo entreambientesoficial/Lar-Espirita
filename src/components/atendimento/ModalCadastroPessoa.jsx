@@ -120,6 +120,36 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     }
   };
 
+  /**
+   * Filtragem de sessões válidas para a data informada (Sem toISOString() para evitar deslocamento UTC)
+   */
+  const getSessoesDisponiveisParaData = (dataStr) => {
+    if (!dataStr) return [];
+    const parts = dataStr.split('-');
+    if (parts.length !== 3) return [];
+
+    const [year, month, day] = parts.map(Number);
+    // Cria data local exata
+    const localDate = new Date(year, month - 1, day);
+    const targetDow = localDate.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui...
+
+    const filtered = atividades.filter(a => {
+      if (!a.active) return false;
+
+      // 1. Atividade regular: event_date é NULL e day_of_week é igual ao dia da semana da data
+      if (a.event_date === null || a.event_date === undefined) {
+        return Number(a.day_of_week) === targetDow;
+      }
+
+      // 2. Atendimento extra: event_date é igual à data selecionada
+      return a.event_date === dataStr;
+    });
+
+    // 3. Ordenar por start_time crescente
+    filtered.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
+    return filtered;
+  };
+
   const getDisponibilidadeSummary = () => {
     const parts = [];
     if (diasDisponiveis.length > 0) {
@@ -199,9 +229,26 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
         );
         onSaved('Cadastro atualizado com sucesso!');
       } else if (prioridade === 'Urgente' && dataProgramacao && sessaoId) {
-        const selectedAtividade = atividades.find(a => a.id === sessaoId);
+        const sessoesValidas = getSessoesDisponiveisParaData(dataProgramacao);
+        const selectedAtividade = sessoesValidas.find(a => a.id === sessaoId);
         if (!selectedAtividade) {
-          setErrorMsg('Selecione uma sessão válida para a programação imediata.');
+          setErrorMsg('A sessão selecionada não é válida para a data informada. Selecione uma sessão da lista.');
+          setLoading(false);
+          return;
+        }
+
+        const [year, month, day] = dataProgramacao.split('-').map(Number);
+        const localDate = new Date(year, month - 1, day);
+        const targetDow = localDate.getDay();
+
+        if (!selectedAtividade.event_date && Number(selectedAtividade.day_of_week) !== targetDow) {
+          setErrorMsg('A atividade regular selecionada não corresponde ao dia da semana da data informada.');
+          setLoading(false);
+          return;
+        }
+
+        if (selectedAtividade.event_date && selectedAtividade.event_date !== dataProgramacao) {
+          setErrorMsg('O atendimento extra selecionado não corresponde à data informada.');
           setLoading(false);
           return;
         }
@@ -256,6 +303,8 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     { num: 6, label: 'Sáb' },
     { num: 0, label: 'Dom' },
   ];
+
+  const sessoesDisponiveis = getSessoesDisponiveisParaData(dataProgramacao);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in duration-200">
@@ -532,7 +581,10 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
                         <input
                           type="date"
                           value={dataProgramacao}
-                          onChange={e => setDataProgramacao(e.target.value)}
+                          onChange={e => {
+                            setDataProgramacao(e.target.value);
+                            setSessaoId(''); // Limpa imediatamente a sessão selecionada ao alterar a data
+                          }}
                           className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl outline-none text-xs font-bold text-amber-950"
                         />
                       </div>
@@ -544,12 +596,16 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
                         <select
                           value={sessaoId}
                           onChange={e => setSessaoId(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl outline-none text-xs font-bold text-amber-950"
+                          disabled={!dataProgramacao}
+                          className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl outline-none text-xs font-bold text-amber-950 disabled:bg-gray-100 disabled:text-gray-400"
                         >
-                          <option value="">Selecione uma sessão...</option>
-                          {atividades.map(atv => (
+                          <option value="">
+                            {!dataProgramacao ? 'Selecione uma data primeiro...' : 'Selecione uma sessão...'}
+                          </option>
+                          {sessoesDisponiveis.map(atv => (
                             <option key={atv.id} value={atv.id}>
-                              {atv.name} ({atv.start_time ? atv.start_time.slice(0,5) : ''})
+                              {atv.name} — {atv.start_time ? atv.start_time.slice(0, 5) : ''}
+                              {atv.end_time ? ` às ${atv.end_time.slice(0, 5)}` : ''}
                             </option>
                           ))}
                         </select>
