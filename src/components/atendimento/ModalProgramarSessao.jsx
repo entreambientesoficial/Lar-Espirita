@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { atendimentoService } from '../../lib/atendimentoService';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequestUrgentBump }) => {
@@ -17,7 +18,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
       loadData();
       const defaultDate = getNextServiceDate();
       setEventDate(defaultDate);
-      setSelectedAtividade('');
+      setSelectedAtividade(''); // NUNCA seleciona a 1ª sessão automaticamente
       setObservacoes('');
       setErrorMsg('');
     }
@@ -25,8 +26,40 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
 
   const loadData = async () => {
     try {
-      const caps = await atendimentoService.getCapacidades();
-      setCapacidades(caps || []);
+      // 1. Carrega todas as atividades ativas (regulares e extras)
+      const { data: atvs } = await supabase
+        .from('atividades')
+        .select('*')
+        .neq('active', false)
+        .order('day_of_week', { ascending: true })
+        .order('start_time', { ascending: true, nullsFirst: false });
+
+      // 2. Carrega capacidades personalizadas das atividades
+      const { data: caps } = await supabase.from('atendimento_capacidades').select('*');
+      const capMap = {};
+      if (caps) {
+        caps.forEach(c => {
+          capMap[c.atividade_id] = {
+            quantidade_salas: c.quantidade_salas ?? 3,
+            atendimentos_por_sala: c.atendimentos_por_sala ?? 3,
+            capacidade: (c.quantidade_salas ?? 3) * (c.atendimentos_por_sala ?? 3),
+          };
+        });
+      }
+
+      const listWithCap = (atvs || []).map(a => {
+        const config = capMap[a.id] || { quantidade_salas: 3, atendimentos_por_sala: 3, capacidade: 9 };
+        return {
+          ...a,
+          quantidade_salas: config.quantidade_salas,
+          atendimentos_por_sala: config.atendimentos_por_sala,
+          capacidade: config.quantidade_salas * config.atendimentos_por_sala,
+        };
+      });
+
+      setCapacidades(listWithCap);
+
+      // 3. Carrega programações ativas para cálculo de ocupação por data
       const progs = await atendimentoService.getAllProgramacoes();
       setProgramacoes(progs || []);
     } catch (err) {
@@ -47,7 +80,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
   };
 
   /**
-   * Filtra as sessões válidas para a data selecionada usando data local e calcula vagas restantes
+   * Filtra rigorosamente as sessões válidas para a data selecionada (fuso horário local)
    */
   const getSessoesDisponiveisParaData = (dataStr) => {
     if (!dataStr) return [];
@@ -55,14 +88,16 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
     if (parts.length !== 3) return [];
 
     const [year, month, day] = parts.map(Number);
-    // Cria objeto Date em fuso horário local (evita deslocamento UTC)
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return [];
+
+    // Fuso horário local absoluto
     const localDate = new Date(year, month - 1, day);
-    const targetDow = localDate.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua...
+    const targetDow = localDate.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb
 
     const filtered = capacidades.filter(a => {
       if (a.active === false) return false;
 
-      // 1. Atividade regular: event_date IS NULL e day_of_week igual ao dia da semana da data
+      // 1. Atividade regular: event_date IS NULL/undefined e day_of_week igual ao targetDow da data
       if (a.event_date === null || a.event_date === undefined) {
         return Number(a.day_of_week) === targetDow;
       }
@@ -71,7 +106,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
       return a.event_date === dataStr;
     });
 
-    // Calcula vagas reais restantes (capacidade configurada - programações ativas na data)
+    // Calcula vagas reais restantes na data
     const withVagas = filtered.map(a => {
       const capMax = a.capacidade || 9;
       const ocupados = (programacoes || []).filter(p =>
@@ -90,7 +125,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
       };
     });
 
-    // Ordenar por start_time crescente
+    // Ordenação por start_time crescente
     withVagas.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
     return withVagas;
   };
@@ -99,17 +134,20 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
 
   const sessoesDisponiveis = getSessoesDisponiveisParaData(eventDate);
   const selectedActivityObj = sessoesDisponiveis.find(a => a.id === selectedAtividade);
+  const isSessionValid = !!selectedActivityObj;
 
   const handleProgramar = async (e) => {
     e.preventDefault();
     if (!eventDate || !selectedAtividade) {
-      setErrorMsg('Selecione a data e a sessão de atendimento.');
+      setErrorMsg('Selecione primeiro a data e a sessão de atendimento.');
       return;
     }
 
-    const atividade = sessoesDisponiveis.find(a => a.id === selectedAtividade);
+    const sessoesValidas = getSessoesDisponiveisParaData(eventDate);
+    const atividade = sessoesValidas.find(a => a.id === selectedAtividade);
+
     if (!atividade) {
-      setErrorMsg('A sessão selecionada não é válida para a data informada. Por favor, selecione uma opção da lista.');
+      setErrorMsg('A sessão selecionada não é válida para a data informada. Por favor, escolha uma opção da lista.');
       return;
     }
 
@@ -128,7 +166,6 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
 
       if (result.overCapacity) {
         setLoading(false);
-        // Chama callback para abrir confirmação de desencaixe/urgência
         onRequestUrgentBump({
           person,
           atividade,
@@ -186,6 +223,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
               onChange={e => {
                 setEventDate(e.target.value);
                 setSelectedAtividade(''); // Limpa imediatamente a sessão ao alterar a data
+                setErrorMsg('');
               }}
               required
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
@@ -205,7 +243,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary disabled:bg-gray-100 disabled:text-gray-400"
             >
               <option value="">
-                {!eventDate ? 'Selecione primeiro a data...' : 'Selecione uma sessão...'}
+                {!eventDate ? 'Selecione primeiro a data' : 'Selecione uma sessão...'}
               </option>
               {sessoesDisponiveis.map(item => (
                 <option key={item.id} value={item.id}>
@@ -221,7 +259,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">info</span>
                 <span>
-                  Capacidade configurada: <strong>{selectedActivityObj.capMax} vagas</strong>
+                  Capacidade total: <strong>{selectedActivityObj.capMax} vagas</strong>
                 </span>
               </div>
               <span className={`px-2.5 py-1 rounded-full font-bold text-[11px] ${
@@ -255,7 +293,7 @@ const ModalProgramarSessao = ({ isOpen, onClose, person, onProgrammed, onRequest
             </button>
             <button
               type="submit"
-              disabled={loading || !eventDate || !selectedAtividade}
+              disabled={loading || !eventDate || !selectedAtividade || !isSessionValid}
               className="flex-1 py-3 bg-primary text-white font-bold rounded-xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
             >
               {loading ? 'Programando...' : 'Confirmar Programação'}
