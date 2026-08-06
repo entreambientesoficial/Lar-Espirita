@@ -121,12 +121,12 @@ const FilaEspera = ({ onShowToast }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      {/* Header com Resumo de Capacidade e botão Novo Cadastro */}
+      {/* Header com Resumo de Capacidade e botão Novo Atendimento */}
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="font-headline font-bold text-2xl text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-2xl">format_list_numbered</span>
-            Fila de Espera dos Pacientes
+            Fila de Espera das Pessoas
           </h3>
           <p className="text-xs text-gray-500 mt-1">
             Gestão da fila para atendimento. Posições atualizadas automaticamente.
@@ -148,7 +148,7 @@ const FilaEspera = ({ onShowToast }) => {
             className="px-5 py-3 bg-primary text-white font-bold rounded-2xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-base">person_add</span>
-            Cadastrar Pessoa
+            Novo Atendimento
           </button>
         </div>
       </div>
@@ -208,7 +208,7 @@ const FilaEspera = ({ onShowToast }) => {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {pessoas.map((item) => {
-                  const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes);
+                  const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes, item);
                   const isUrgente = item.prioridade === 'Urgente';
 
                   return (
@@ -311,7 +311,7 @@ const FilaEspera = ({ onShowToast }) => {
           {/* Cards para Celular */}
           <div className="grid grid-cols-1 gap-4 lg:hidden">
             {pessoas.map((item) => {
-              const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes);
+              const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes, item);
               const isUrgente = item.prioridade === 'Urgente';
 
               return (

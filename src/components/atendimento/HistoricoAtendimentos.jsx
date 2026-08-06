@@ -54,9 +54,9 @@ const HistoricoAtendimentos = ({ onShowToast }) => {
 
     switch (action) {
       case 'CADASTRO_PESSOA':
-        return `Cadastrado por ${adminName}`;
+        return `Cadastro da Pessoa por ${adminName}`;
       case 'CADASTRO_E_PROGRAMACAO_URGENTE':
-        return `Cadastrado e Programado por ${adminName}`;
+        return `Cadastro e Programação por ${adminName}`;
       case 'EDICAO_PESSOA':
         return `Atualizado por ${adminName}`;
       case 'REORGANIZACAO_FILA':
@@ -125,7 +125,7 @@ const HistoricoAtendimentos = ({ onShowToast }) => {
     }
 
     if (status === 'aguardando' && pessoa.posicao_fila) {
-      const prev = atendimentoService.calculatePrevisaoReal(pessoa.posicao_fila, capacidades, programacoes);
+      const prev = atendimentoService.calculatePrevisaoReal(pessoa.posicao_fila, capacidades, programacoes, pessoa);
       if (prev && prev.formattedDate) {
         return (
           <div className="flex flex-col text-xs">
@@ -174,7 +174,7 @@ const HistoricoAtendimentos = ({ onShowToast }) => {
             <thead>
               <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
                 <th className="px-6 py-4">Data / Hora</th>
-                <th className="px-6 py-4">Paciente</th>
+                <th className="px-6 py-4">Pessoa</th>
                 <th className="px-6 py-4">Ação Realizada</th>
                 <th className="px-6 py-4">Previsão do Atendimento</th>
                 <th className="px-6 py-4">Observação / Detalhes</th>

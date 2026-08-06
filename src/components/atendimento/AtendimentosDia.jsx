@@ -47,7 +47,7 @@ const AtendimentosDia = ({ onShowToast }) => {
         atendido: 'Atendimento finalizado com sucesso!',
         nao_compareceu: 'Falta registrada no histórico.',
         cancelado: 'Agendamento cancelado.',
-        retornar_fila: 'Paciente retornado à fila de espera.',
+        retornar_fila: 'Pessoa retornada à fila de espera.',
       };
 
       onShowToast(labelMap[novoStatus] || 'Status atualizado com sucesso!', 'success');
@@ -136,7 +136,7 @@ const AtendimentosDia = ({ onShowToast }) => {
 
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h5 className="font-bold text-primary text-base">{person?.nome || 'Paciente sem nome'}</h5>
+                            <h5 className="font-bold text-primary text-base">{person?.nome || 'Pessoa sem nome'}</h5>
                             {isUrgente && (
                               <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-black rounded-md uppercase">
                                 Urgente

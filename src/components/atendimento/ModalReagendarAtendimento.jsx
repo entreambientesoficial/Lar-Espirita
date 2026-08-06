@@ -72,20 +72,20 @@ const ModalReagendarAtendimento = ({ isOpen, onClose, programacaoItem, onResched
       const diasNum = pessoa.dias_disponiveis.map(Number);
       if (!diasNum.includes(dow)) {
         const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        conflicts.push(`O paciente não marcou ${DAY_NAMES[dow]} como dia disponível.`);
+        conflicts.push(`A pessoa não marcou ${DAY_NAMES[dow]} como dia disponível.`);
       }
     }
 
     // Checa período
     if (Array.isArray(pessoa.periodos_disponiveis) && pessoa.periodos_disponiveis.length > 0) {
       if (!pessoa.periodos_disponiveis.includes(periodName)) {
-        conflicts.push(`O paciente não marcou o período da ${periodName} como disponível.`);
+        conflicts.push(`A pessoa não marcou o período da ${periodName} como disponível.`);
       }
     }
 
     // Checa datas indisponíveis
     if (Array.isArray(pessoa.datas_indisponiveis) && pessoa.datas_indisponiveis.includes(eventDate)) {
-      conflicts.push(`A data ${eventDate.split('-').reverse().join('/')} foi cadastrada como indisponível pelo paciente.`);
+      conflicts.push(`A data ${eventDate.split('-').reverse().join('/')} foi cadastrada como indisponível pela pessoa.`);
     }
 
     if (conflicts.length > 0) {
@@ -145,7 +145,7 @@ const ModalReagendarAtendimento = ({ isOpen, onClose, programacaoItem, onResched
                 Reagendar Atendimento
               </h3>
               <p className="text-xs text-gray-400">
-                Altere a data ou a sessão programada para este paciente.
+                Altere a data ou a sessão programada para esta pessoa.
               </p>
             </div>
           </div>
@@ -154,9 +154,9 @@ const ModalReagendarAtendimento = ({ isOpen, onClose, programacaoItem, onResched
           </button>
         </div>
 
-        {/* Resumo do Paciente */}
+        {/* Resumo da Pessoa */}
         <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200/60 text-xs space-y-1">
-          <div className="font-bold text-primary text-sm">{pessoa?.nome || 'Paciente'}</div>
+          <div className="font-bold text-primary text-sm">{pessoa?.nome || 'Pessoa'}</div>
           {pessoa?.telefone && <div className="text-gray-500 font-mono">{pessoa.telefone}</div>}
           <div className="text-gray-600 font-medium pt-1 border-t border-gray-200/50">
             Agendamento Atual: <strong className="text-primary">{programacaoItem.event_date ? programacaoItem.event_date.split('-').reverse().join('/') : '-'}</strong> ({programacaoItem.atividades?.name || 'Sessão'})
@@ -218,7 +218,7 @@ const ModalReagendarAtendimento = ({ isOpen, onClose, programacaoItem, onResched
             </label>
             <textarea
               rows="2"
-              placeholder="Ex: Solicitado pelo paciente devido a imprevisto"
+              placeholder="Ex: Solicitado pela pessoa devido a imprevisto"
               value={observacoes}
               onChange={e => setObservacoes(e.target.value)}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-xs font-medium text-gray-700"

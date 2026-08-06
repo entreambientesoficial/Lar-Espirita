@@ -241,9 +241,9 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
             </div>
             <div>
               <h3 className="font-headline font-bold text-lg text-primary">
-                {editingPerson ? 'Editar Cadastro' : 'Cadastrar Pessoa na Fila'}
+                {editingPerson ? 'Editar Cadastro' : 'Novo Atendimento'}
               </h3>
-              <p className="text-xs text-gray-400">Preencha os dados da pessoa para controle da fila.</p>
+              <p className="text-xs text-gray-400">Informe os dados da pessoa para inclusão na fila de atendimento.</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
@@ -548,7 +548,9 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
                 Salvando...
               </>
             ) : (
-              editingPerson ? 'Salvar Alterações' : 'Cadastrar Pessoa'
+              editingPerson
+                ? 'Salvar Alterações'
+                : (prioridade === 'Urgente' && dataProgramacao && sessaoId ? 'Incluir e Programar' : 'Incluir na Fila')
             )}
           </button>
         </div>

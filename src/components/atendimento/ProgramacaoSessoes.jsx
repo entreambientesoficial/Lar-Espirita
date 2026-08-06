@@ -200,7 +200,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
               <thead>
                 <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
                   <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Paciente</th>
+                  <th className="px-6 py-4">Pessoa</th>
                   <th className="px-6 py-4">Trabalho / Sessão</th>
                   <th className="px-6 py-4">Prioridade</th>
                   <th className="px-6 py-4">Status</th>
@@ -214,7 +214,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                       {p.event_date ? p.event_date.split('-').reverse().join('/') : '-'}
                     </td>
                     <td className="px-6 py-4 font-bold text-gray-800">
-                      {p.atendimento_pessoas?.nome || 'Paciente sem nome'}
+                      {p.atendimento_pessoas?.nome || 'Pessoa sem nome'}
                     </td>
                     <td className="px-6 py-4 text-gray-600 font-medium">
                       {p.atividades?.name || 'Sessão'}

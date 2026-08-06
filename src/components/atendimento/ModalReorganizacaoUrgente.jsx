@@ -1,47 +1,51 @@
 import React from 'react';
 
-const ModalReorganizacaoUrgente = ({ isOpen, onClose, onConfirm, sessionInfo, lastNormalPerson }) => {
-  if (!isOpen) return null;
+const ModalReorganizacaoUrgente = ({ isOpen, onClose, bumpData, onConfirmed }) => {
+  if (!isOpen || !bumpData) return null;
+
+  const { lastNormalPerson, sessionName, eventDate } = bumpData;
+
+  const handleConfirm = () => {
+    onConfirmed(`Encaixe urgente realizado! A pessoa ${lastNormalPerson.atendimento_pessoas?.nome || ''} foi reagendada para a próxima sessão.`);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 border border-gray-100 shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
-          <span className="material-symbols-outlined text-2xl">warning</span>
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+          <div className="w-10 h-10 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center font-bold text-lg">
+            <span className="material-symbols-outlined text-xl">priority_high</span>
+          </div>
+          <div>
+            <h3 className="font-headline font-bold text-lg text-primary">Aviso de Remanejamento</h3>
+            <p className="text-xs text-gray-500">A sessão selecionada ({sessionName}) já atingiu o limite de vagas.</p>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <h4 className="font-headline font-bold text-lg text-primary">Sessão com Capacidade Preenchida</h4>
-          <p className="text-xs text-gray-500 leading-relaxed font-medium">
-            Esta sessão já atingiu o limite de atendimentos configurado ({sessionInfo?.capacity || 6} vagas).
+        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200/60 text-xs text-amber-950 space-y-2">
+          <p>
+            A pessoa <strong>{lastNormalPerson.atendimento_pessoas?.nome || 'Pessoa sem nome'}</strong> será desencaixada desta sessão e retornará à 1ª posição da fila de espera para ser programada na próxima data disponível.
+          </p>
+          <p className="font-semibold text-amber-900">
+            Deseja confirmar o encaixe urgente e a reorganização da fila?
           </p>
         </div>
 
-        {lastNormalPerson && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2 text-xs text-amber-900">
-            <span className="font-bold block uppercase tracking-wider text-[10px] text-amber-700">Remanejamento Previsto:</span>
-            <p className="font-medium">
-              O paciente <strong>{lastNormalPerson.atendimento_pessoas?.nome || 'Paciente sem nome'}</strong> será desencaixado desta sessão e retornará à 1ª posição da fila de espera para ser programado na próxima data disponível.
-            </p>
-          </div>
-        )}
-
-        <p className="text-xs text-gray-500 font-medium">
-          Deseja inserir este atendimento urgente e reorganizar as próximas programações?
-        </p>
-
         <div className="flex items-center gap-3 pt-2">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all"
           >
             Cancelar
           </button>
           <button
-            onClick={onConfirm}
+            type="button"
+            onClick={handleConfirm}
             className="flex-1 py-3 bg-amber-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-amber-600/20 hover:bg-amber-700 active:scale-95 transition-all"
           >
-            Inserir e Reorganizar
+            Confirmar Encaixe
           </button>
         </div>
       </div>
