@@ -17,6 +17,7 @@ const FilaEspera = ({ onShowToast }) => {
   const [search, setSearch] = useState('');
   const [prioridadeFilter, setPrioridadeFilter] = useState('');
   const [tipoFilter, setTipoFilter] = useState('');
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   // Modais
   const [isCadastroModalOpen, setIsCadastroModalOpen] = useState(false);
@@ -234,11 +235,11 @@ const FilaEspera = ({ onShowToast }) => {
                       <td className="px-5 py-4">
                         <div className="text-xs font-bold text-gray-700">{item.tipo_atendimento}</div>
                         {isUrgente ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-extrabold rounded-md mt-1 uppercase">
-                            <span className="material-symbols-outlined text-[10px]">priority_high</span> Urgente
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold rounded-md mt-1 uppercase">
+                            <span className="material-symbols-outlined text-[12px]">warning</span> Urgente
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-md mt-1 uppercase">
+                          <span className="inline-flex items-center px-2 py-0.5 bg-sky-50 text-sky-700 text-[10px] font-bold rounded-md mt-1 uppercase">
                             Normal
                           </span>
                         )}
@@ -255,51 +256,84 @@ const FilaEspera = ({ onShowToast }) => {
                         )}
                       </td>
 
-                      <td className="px-5 py-4 text-right space-x-1 whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            setProgramarPerson(item);
-                            setIsProgramarModalOpen(true);
-                          }}
-                          className="px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:brightness-110 active:scale-95 transition-all"
-                        >
-                          Programar
-                        </button>
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setProgramarPerson(item);
+                              setIsProgramarModalOpen(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">calendar_month</span>
+                            Programar
+                          </button>
 
-                        <button
-                          onClick={() => handleOpenCadastro(item)}
-                          className="p-1.5 text-gray-500 hover:text-primary transition-colors"
-                          title="Editar"
-                        >
-                          <span className="material-symbols-outlined text-lg">edit</span>
-                        </button>
+                          {/* Menu de Opções Secundárias [•••] */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all font-mono font-bold text-xs"
+                              title="Mais opções"
+                            >
+                              •••
+                            </button>
 
-                        <button
-                          onClick={() => {
-                            setMovePerson(item);
-                            setIsMoveModalOpen(true);
-                          }}
-                          className="p-1.5 text-gray-500 hover:text-primary transition-colors"
-                          title="Mover posição"
-                        >
-                          <span className="material-symbols-outlined text-lg">swap_vert</span>
-                        </button>
+                            {openMenuId === item.id && (
+                              <div className="absolute right-0 mt-1 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-30 animate-in fade-in zoom-in-95 text-left">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleOpenCadastro(item);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl flex items-center gap-2 transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-sm">edit</span>
+                                  Editar Cadastro
+                                </button>
 
-                        <button
-                          onClick={() => handleToggleUrgencia(item)}
-                          className={`p-1.5 transition-colors ${isUrgente ? 'text-amber-600 hover:text-amber-800' : 'text-gray-400 hover:text-amber-600'}`}
-                          title={isUrgente ? 'Remover urgência' : 'Marcar como urgente'}
-                        >
-                          <span className="material-symbols-outlined text-lg">priority_high</span>
-                        </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setMovePerson(item);
+                                    setIsMoveModalOpen(true);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl flex items-center gap-2 transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-sm">unfold_more</span>
+                                  Mover Posição
+                                </button>
 
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Excluir"
-                        >
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleToggleUrgencia(item);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-xl flex items-center gap-2 transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
+                                  {isUrgente ? 'Remover Urgência' : 'Tornar Urgente'}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    handleCancel(item.id, item.nome);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2 transition-colors border-t border-gray-100 mt-1 pt-2"
+                                >
+                                  <span className="material-symbols-outlined text-sm">cancel</span>
+                                  Cancelar Fila
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   );

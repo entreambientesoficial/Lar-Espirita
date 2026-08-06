@@ -7,6 +7,7 @@ import FilaEspera from '../components/atendimento/FilaEspera';
 import ProgramacaoSessoes from '../components/atendimento/ProgramacaoSessoes';
 import AtendimentosDia from '../components/atendimento/AtendimentosDia';
 import HistoricoAtendimentos from '../components/atendimento/HistoricoAtendimentos';
+import FilaDashboardHeader from '../components/atendimento/FilaDashboardHeader';
 
 export const formatPhone = (value) => {
   if (!value) return '';
@@ -767,49 +768,68 @@ const Admin = () => {
       ) : activeTab === 'fila' ? (
         /* Fila de Atendimento Tab */
         <div className="space-y-8 animate-in fade-in">
+          {/* Dashboard Operacional de Indicadores Rápidos */}
+          <FilaDashboardHeader />
+
           {/* Sub-Navegação interna da Fila */}
           <div className="flex gap-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setFilaSubTab('espera')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'espera' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-b-2 ${
+                filaSubTab === 'espera'
+                  ? 'bg-blue-50/70 text-blue-900 border-blue-600 font-extrabold shadow-sm'
+                  : 'text-gray-500 border-transparent hover:bg-gray-50'
               }`}
             >
-              <span className="material-symbols-outlined text-base">hourglass_top</span>
+              <span className={`material-symbols-outlined text-base ${filaSubTab === 'espera' ? 'text-blue-600' : 'text-gray-400'}`}>
+                hourglass_top
+              </span>
               1. Fila de Espera
             </button>
 
             <button
               type="button"
               onClick={() => setFilaSubTab('programados')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'programados' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-b-2 ${
+                filaSubTab === 'programados'
+                  ? 'bg-amber-50/70 text-amber-900 border-amber-600 font-extrabold shadow-sm'
+                  : 'text-gray-500 border-transparent hover:bg-gray-50'
               }`}
             >
-              <span className="material-symbols-outlined text-base">event_note</span>
+              <span className={`material-symbols-outlined text-base ${filaSubTab === 'programados' ? 'text-amber-600' : 'text-gray-400'}`}>
+                calendar_month
+              </span>
               2. Atendimentos Programados
             </button>
 
             <button
               type="button"
               onClick={() => setFilaSubTab('dia')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'dia' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-b-2 ${
+                filaSubTab === 'dia'
+                  ? 'bg-green-50/70 text-green-900 border-green-600 font-extrabold shadow-sm'
+                  : 'text-gray-500 border-transparent hover:bg-gray-50'
               }`}
             >
-              <span className="material-symbols-outlined text-base">today</span>
+              <span className={`material-symbols-outlined text-base ${filaSubTab === 'dia' ? 'text-green-600' : 'text-gray-400'}`}>
+                check_circle
+              </span>
               3. Atendimentos do Dia
             </button>
 
             <button
               type="button"
               onClick={() => setFilaSubTab('historico')}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-                filaSubTab === 'historico' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border-b-2 ${
+                filaSubTab === 'historico'
+                  ? 'bg-purple-50/70 text-purple-900 border-purple-600 font-extrabold shadow-sm'
+                  : 'text-gray-500 border-transparent hover:bg-gray-50'
               }`}
             >
-              <span className="material-symbols-outlined text-base">history</span>
+              <span className={`material-symbols-outlined text-base ${filaSubTab === 'historico' ? 'text-purple-600' : 'text-gray-400'}`}>
+                history
+              </span>
               4. Histórico
             </button>
           </div>

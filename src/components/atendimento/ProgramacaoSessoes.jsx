@@ -16,6 +16,9 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   const [editingCapMap, setEditingCapMap] = useState({});
   const [savingCapId, setSavingCapId] = useState(null);
 
+  // Estado para menu de opções [•••] por item ID
+  const [openMenuId, setOpenMenuId] = useState(null);
+
   // Modal Reagendar
   const [reagendarItem, setReagendarItem] = useState(null);
   const [isReagendarOpen, setIsReagendarOpen] = useState(false);
@@ -106,18 +109,27 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   // Cálculos de resumo para a barra do Accordion
   const totalWeeklyCapacity = capacidades.reduce((acc, c) => acc + (c.capacidade || 9), 0);
   const numSessoes = capacidades.length;
-  const avgVagasPorSessao = numSessoes > 0 ? Math.round(totalWeeklyCapacity / numSessoes) : 9;
 
   // Filtragem estrita da lista operacional: exibe unicamente status 'programado' e 'compareceu'
   const activeProgramacoes = (programacoes || []).filter(p => ['programado', 'compareceu'].includes(p.status));
 
+  // Agrupamento de Atendimentos Programados por DATA
+  const groupedByDate = activeProgramacoes.reduce((acc, p) => {
+    const dateKey = p.event_date || 'Sem data';
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(p);
+    return acc;
+  }, {});
+
+  const sortedDates = Object.keys(groupedByDate).sort();
+
   return (
     <div className="space-y-8 animate-in fade-in">
-      {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Foco na operação diária) */}
-      <div className="space-y-4">
+      {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Agrupados por Data) */}
+      <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-amber-600">event</span>
+            <span className="material-symbols-outlined text-amber-600">calendar_month</span>
             Todos os Atendimentos Programados
           </h3>
           <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
@@ -127,98 +139,177 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
 
         {loading ? (
           <div className="py-12 text-center text-gray-400 italic">Carregando agendamentos...</div>
-        ) : activeProgramacoes.length > 0 ? (
-          <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
-            <table className="w-full text-left min-w-[750px]">
-              <thead>
-                <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-100">
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Pessoa</th>
-                  <th className="px-6 py-4">Trabalho / Sala / Sessão</th>
-                  <th className="px-6 py-4">Prioridade</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
-                {activeProgramacoes.map(p => {
-                  const activityName = p.atividades?.name || 'Apometria';
-                  const dow = p.atividades?.day_of_week;
-                  const roomNum = getRoomNum(dow);
-                  const currDateFormatted = p.event_date ? p.event_date.split('-').reverse().join('/') : '-';
+        ) : sortedDates.length > 0 ? (
+          <div className="space-y-6">
+            {sortedDates.map(dateKey => {
+              const dateProgs = groupedByDate[dateKey];
+              const parts = dateKey.split('-');
+              let dateFormatted = dateKey;
+              let dayOfWeekStr = '';
 
-                  // Busca agendamento cancelado anterior da mesma pessoa para identificação discreta de reagendamento
-                  const prevCancelled = (programacoes || []).find(oldP =>
-                    oldP.pessoa_id === p.pessoa_id &&
-                    oldP.status === 'cancelado' &&
-                    oldP.id !== p.id
-                  );
-                  const prevDateFormatted = prevCancelled?.event_date ? prevCancelled.event_date.split('-').reverse().join('/') : null;
+              if (parts.length === 3) {
+                const [year, month, day] = parts.map(Number);
+                const d = new Date(year, month - 1, day);
+                dateFormatted = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                dayOfWeekStr = DAY_NAMES[d.getDay()] || '';
+              }
 
-                  return (
-                    <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-primary">
-                        <div>{currDateFormatted}</div>
-                        {prevDateFormatted && (
-                          <div className="mt-1">
-                            <span className="text-[10px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 inline-flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">update</span>
-                              Reagendado de {prevDateFormatted} para {currDateFormatted}
-                            </span>
+              // Agrupa por sessão no dia
+              const sessoesNoDia = dateProgs.reduce((acc, p) => {
+                const atvId = p.atividade_id || 'default';
+                if (!acc[atvId]) {
+                  acc[atvId] = {
+                    atividade: p.atividades,
+                    items: [],
+                  };
+                }
+                acc[atvId].items.push(p);
+                return acc;
+              }, {});
+
+              return (
+                <div key={dateKey} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-5">
+                  {/* Cabeçalho da Data */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-100 pb-3 gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center font-bold">
+                        <span className="material-symbols-outlined text-xl">event</span>
+                      </div>
+                      <div>
+                        <h4 className="font-headline font-extrabold text-lg text-primary">
+                          {dateFormatted} <span className="text-gray-400 font-normal text-sm">({dayOfWeekStr})</span>
+                        </h4>
+                        <span className="text-xs text-gray-500 font-medium">
+                          {dateProgs.length} {dateProgs.length === 1 ? 'pessoa agendada' : 'pessoas agendadas'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Agrupamento por Trabalho / Sala na Data */}
+                  <div className="space-y-6">
+                    {Object.keys(sessoesNoDia).map(atvId => {
+                      const sessaoGroup = sessoesNoDia[atvId];
+                      const atv = sessaoGroup.atividade || {};
+                      const roomNum = getRoomNum(atv.day_of_week);
+                      const capMax = capacidades.find(c => c.id === atv.id)?.capacidade || 9;
+                      const ocupados = sessaoGroup.items.length;
+                      const pctOcupacao = Math.min(100, Math.round((ocupados / capMax) * 100));
+
+                      return (
+                        <div key={atvId} className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/60 space-y-4">
+                          {/* Cabeçalho da Sessão com Nome Único, Badge de Sala e Barra de Progresso */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200/50 pb-3">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-bold text-primary text-base">
+                                {atv.name || 'Apometria'}
+                              </h5>
+                              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300/60 rounded-md font-black text-xs">
+                                Sala {roomNum}
+                              </span>
+                              <span className="text-xs text-gray-500 font-medium ml-1">
+                                • {atv.start_time ? atv.start_time.slice(0, 5) : '13:30'}
+                              </span>
+                            </div>
+
+                            {/* Barra de Progresso Simples de Ocupação */}
+                            <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                              <span className="text-xs font-bold text-gray-700 whitespace-nowrap">
+                                {ocupados} de {capMax} vagas
+                              </span>
+                              <div className="w-24 bg-gray-200 rounded-full h-2 overflow-hidden shrink-0">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    pctOcupacao >= 100 ? 'bg-amber-600' : 'bg-emerald-600'
+                                  }`}
+                                  style={{ width: `${pctOcupacao}%` }}
+                                ></div>
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-gray-800">
-                        {p.atendimento_pessoas?.nome || 'Pessoa sem nome'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 text-sm">{activityName}</span>
-                          <span className="inline-block w-fit px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 rounded-md text-[11px] font-extrabold my-0.5">
-                            Sala {roomNum}
-                          </span>
-                          <span className="text-xs text-gray-400 font-mono">
-                            {DAY_NAMES[dow] || ''} {p.start_time ? `• ${p.start_time.slice(0, 5)}` : ''}
-                          </span>
+
+                          {/* Lista de Pessoas na Sala */}
+                          <div className="divide-y divide-gray-200/50">
+                            {sessaoGroup.items.map(p => {
+                              // Checa se veio de reagendamento
+                              const prevCancelled = (programacoes || []).find(oldP =>
+                                oldP.pessoa_id === p.pessoa_id &&
+                                oldP.status === 'cancelado' &&
+                                oldP.id !== p.id
+                              );
+                              const prevDateFormatted = prevCancelled?.event_date ? prevCancelled.event_date.split('-').reverse().join('/') : null;
+
+                              return (
+                                <div key={p.id} className="py-3 flex items-center justify-between gap-4">
+                                  <div className="space-y-0.5">
+                                    <div className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                      {p.atendimento_pessoas?.nome || 'Pessoa sem nome'}
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                        p.prioridade === 'Urgente'
+                                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                          : 'bg-sky-50 text-sky-700'
+                                      }`}>
+                                        {p.prioridade}
+                                      </span>
+                                    </div>
+
+                                    {prevDateFormatted && (
+                                      <div className="text-[10px] text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 inline-flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[12px]">update</span>
+                                        Reagendado de {prevDateFormatted} para {dateFormatted}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                      p.status === 'programado' ? 'bg-indigo-50 text-indigo-700' :
+                                      p.status === 'compareceu' ? 'bg-green-100 text-green-800' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {p.status}
+                                    </span>
+
+                                    {/* Botão de Ação Secundária Dropdown [•••] */}
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
+                                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-200/60 rounded-xl transition-all font-mono font-bold text-xs"
+                                        title="Mais opções"
+                                      >
+                                        •••
+                                      </button>
+
+                                      {openMenuId === p.id && (
+                                        <div className="absolute right-0 mt-1 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-30 animate-in fade-in zoom-in-95">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setOpenMenuId(null);
+                                              setReagendarItem(p);
+                                              setIsReagendarOpen(true);
+                                            }}
+                                            className="w-full text-left px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-900 rounded-xl flex items-center gap-2 transition-colors"
+                                          >
+                                            <span className="material-symbols-outlined text-sm">update</span>
+                                            Reagendar
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold ${
-                          p.prioridade === 'Urgente'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-sky-50 text-sky-700'
-                        }`}>
-                          {p.prioridade}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          p.status === 'programado' ? 'bg-indigo-50 text-indigo-700' :
-                          p.status === 'compareceu' ? 'bg-green-100 text-green-800' :
-                          p.status === 'atendido' ? 'bg-emerald-100 text-emerald-900' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {p.status === 'programado' && (
-                          <button
-                            onClick={() => {
-                              setReagendarItem(p);
-                              setIsReagendarOpen(true);
-                            }}
-                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-indigo-700 transition-all"
-                          >
-                            Reagendar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="bg-white rounded-3xl p-12 text-center text-gray-400 italic border border-gray-100 shadow-sm">
@@ -240,9 +331,9 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-headline font-bold text-xl text-primary">⚙ Configuração de Vagas</h3>
+                <h3 className="font-headline font-bold text-xl text-primary">⚙ Configuração de vagas</h3>
                 <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200/60 rounded-full font-bold text-xs">
-                  {numSessoes} sessões • {avgVagasPorSessao} vagas por sessão • {totalWeeklyCapacity} vagas por semana
+                  {numSessoes} sessões • {totalWeeklyCapacity} vagas semanais
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -274,11 +365,11 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                         <h4 className="font-bold text-primary text-base">
                           {item.name}
                         </h4>
-                        <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300/60 rounded-md font-extrabold text-[11px] my-1">
+                        <span className="inline-block px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300/60 rounded-md font-black text-[11px] my-1">
                           Sala {roomNum}
                         </span>
                         <span className="text-xs text-gray-500 font-medium block">
-                          {DAY_NAMES[item.day_of_week]} • {item.start_time ? item.start_time.slice(0, 5) : item.time_range}
+                          {DAY_NAMES[item.day_of_week]} {item.start_time ? item.start_time.slice(0, 5) : item.time_range}
                         </span>
                       </div>
                       <div className="text-right">
