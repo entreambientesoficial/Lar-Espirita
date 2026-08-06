@@ -51,13 +51,13 @@ $$;
 
 ### Tabelas Atuais:
 
-*   `profiles`: Perfis de usuários. Colunas: `id` (uuid), `name`, `email`, `role` (`admin` | `volunteer`), `phone`, `cursos`.
+*   `profiles`: Perfis de usuários. Colunas: `id` (uuid), `name`, `email`, `role` (`admin` | `volunteer`), `phone`, `cursos`, `active` (BOOLEAN DEFAULT true).
 *   `pre_cadastros`: E-mails pré-aprovados pela diretoria. Sem estar aqui, nenhum e-mail externo consegue fazer login.
 *   `atividades`: Agenda da casa. Colunas: `id`, `name`, `time_range`, `start_time`, `end_time`, `description`, `day_of_week` (0=Dom, 1=Seg…6=Sáb), `event_date` (DATE NULL para extras), `active` (BOOLEAN), `icon`, `created_at`.
 *   `presencas`: Confirmações e presenças dos voluntários. Colunas: `id`, `user_id` (FK→profiles), `atividade_id` (FK→atividades), `checkin_time` (default `now()`), `qr_checkin` (boolean, default `false`).
-*   `atendimento_pessoas`: Pessoas da Fila de Atendimento Público. Colunas: `id`, `nome`, `telefone`, `tipo_atendimento`, `prioridade` (`Normal` | `Urgente`), `motivo_urgencia`, `observacoes`, `data_entrada`, `status` (`aguardando`, `programado`, `compareceu`, `atendido`, `nao_compareceu`, `cancelado`), `posicao_fila`, `created_at`, `updated_at`.
-*   `atendimento_programacoes`: Agendamento de pacientes em sessões específicas. Colunas: `id`, `pessoa_id`, `atividade_id`, `event_date`, `start_time`, `end_time`, `ordem_sessao`, `prioridade`, `status`, `observacoes`, `created_at`, `updated_at`.
-*   `atendimento_capacidades`: Vagas máximas configuradas por sessão/atividade. Colunas: `id`, `atividade_id`, `capacidade`, `active`, `created_at`, `updated_at`.
+*   `atendimento_pessoas`: Pessoas da Fila de Atendimento Público. Colunas: `id`, `nome`, `telefone`, `tipo_atendimento`, `prioridade` (`Normal` | `Urgente`), `motivo_urgencia`, `observacoes`, `data_entrada`, `dias_disponiveis` (JSONB), `periodos_disponiveis` (JSONB), `datas_indisponiveis` (JSONB), `observacoes_disponibilidade` (TEXT), `status` (`aguardando`, `programado`, `compareceu`, `atendido`, `nao_compareceu`, `cancelado`), `posicao_fila`, `created_at`, `updated_at`.
+*   `atendimento_programacoes`: Agendamento de pessoas em sessões específicas. Colunas: `id`, `pessoa_id`, `atividade_id`, `event_date`, `start_time`, `end_time`, `ordem_sessao`, `prioridade`, `status`, `observacoes`, `created_at`, `updated_at`.
+*   `atendimento_capacidades`: Vagas máximas configuradas por sessão/atividade. Colunas: `id`, `atividade_id`, `quantidade_salas`, `atendimentos_por_sala`, `capacidade`, `active`, `created_at`, `updated_at`.
 *   `atendimento_historico`: Log imutável de auditoria. Colunas: `id`, `pessoa_id`, `programacao_id`, `admin_id`, `action`, `dados_anteriores`, `dados_novos`, `observacao`, `created_at`.
 
 > **Nota:** A tabela `escalas` foi planejada mas **nunca foi criada**. Não referenciar essa tabela em código ou RLS.
@@ -81,10 +81,12 @@ $$;
 ### Scripts de dados:
 *   `migration_agenda.sql` — adiciona colunas `active`, `event_date`, `start_time`, `end_time`, índices, constraints e popula a nova grade regular de Apometria (Ter/Qua/Qui).
 *   `migration_fila_atendimento.sql` — cria as tabelas `atendimento_pessoas`, `atendimento_programacoes`, `atendimento_capacidades` e `atendimento_historico` com RLS restrito a `is_admin()`.
+*   `migration_disponibilidade_reagendamento.sql` — adiciona colunas JSONB de disponibilidade do atendido e cria as RPCs `atendimento_reagendar()` e `atendimento_cadastrar_e_programar_urgente()` com recarga de cache PostgREST.
+*   `migration_profiles_active.sql` — adiciona a coluna `active` em `public.profiles` para controle de status operacional do médium.
 
 ---
 *Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.8 — Módulo administrativo "Fila de Atendimento" para substituição do caderno físico, controle de posição de fila, previsão aproximada de espera, vagas por sessão, urgência/remanejamento e auditoria em tempo real**.*
+*Fase atual: **V 1.9 — Módulo Fila de Atendimento refinado com agrupamento por Data e Sala (1, 2 e 3), dashboard de indicadores rápidos, menus dropdown de ações, modais transacionais de reagendamento/exclusão e gestão de Médiuns e Gestores com status Ativo/Inativo**.*
 
 ## 3. Fluxo de Presença (IMPORTANTE)
 
@@ -109,7 +111,7 @@ O fluxo correto é em **dois passos**:
 ### Acesso Restrito (Administração)
 *   **`Admin.jsx`**: Quatro abas:
     1. **Presenças Hoje**: Lista todos que confirmaram presença no dia (com ou sem QR check-in). Colunas: Médium, Atividade, Confirmou às, Check-in QR (Realizado/Pendente). Atualiza via Websocket em tempo real.
-    2. **Médiuns e Gestores**: Formulário "Cadastrar Novo Médium" com botão **"Cadastrar"** (gera convite WhatsApp). Controle de Promover/Rebaixar admin (protegido: não remove o último admin).
+    2. **Médiuns e Gestores**: Formulário "Cadastrar Novo Médium" com botão **"Cadastrar"** (gera convite WhatsApp). Controle de Promover/Rebaixar admin, filtro por status operacional (Ativo/Inativo), resumo de cadastrados no topo e tradução de níveis de acesso (`Médium`, `Gestor`, `Administrador`).
     3. **Reflexão do Dia**: Live preview. Altera frase e imagem espiritual em tempo real.
     4. **QR Code da Casa**: Exibe e permite imprimir o QR Code oficial da Casa com o título "Apometria Elos de Amor e Paz".
 
@@ -160,17 +162,89 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 4. **Estoque** *(V2)* — Controle de quantidade disponível por item, alerta de estoque baixo.
 5. **Relatórios** *(V2)* — Vendas por período, produto mais vendido.
 
-### Banco de dados previsto:
-*   `lanche_produtos`: `id`, `name`, `price`, `active` (boolean)
-*   `lanche_vendas`: `id`, `user_id` (FK→profiles), `created_at`, `total`
-*   `lanche_itens_venda`: `id`, `venda_id` (FK→lanche_vendas), `produto_id` (FK→lanche_produtos), `quantidade`, `preco_unitario`
-*   `lanche_estoque` *(V2)*: `produto_id`, `quantidade`
-
-### Controle de acesso:
-*   Novo role `lanchonete` em `profiles.role` (além de `admin` e `volunteer`)
-*   Aba "Lanchonete" no menu visível apenas para `role = lanchonete` ou `role = admin`
-*   RLS aplicado nas tabelas `lanche_*`
-
 ---
-*Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.7 — Nova grade de Apometria, suporte a atendimentos extras em datas específicas, inclusão de Domingo na agenda e nova aba de gerenciamento da Agenda na Administração**.*
+
+## 9. Detalhamento de Implementação da Fila de Atendimento (V1.8 & V1.9)
+
+### Funcionalidades do Módulo Fila de Atendimento
+- **Previsão Dinâmica Baseada em Sessões Reais**: Cálculo em tempo real da estimativa de atendimento considerando a quantidade de salas ativas e atendimentos por sala.
+- **Cálculo Automático da Data Prevista**: Mapeamento inteligente de dias da semana (Terça, Quarta e Quinta) para calcular as próximas datas disponíveis.
+- **Exclusão do Mesmo Dia na Previsão Automática**: Se a consulta/cálculo de previsão for executado no mesmo dia da sessão, o algoritmo ignora o próprio dia e projeta automaticamente para as datas/semanas subsequentes.
+- **Disponibilidade Opcional do Atendido**: Suporte a dados detalhados de restrição da pessoa (`p_dias_disponiveis`, `p_periodos_disponiveis`, `p_datas_indisponiveis`, `p_observacoes_disponibilidade`), exibidos em accordion recolhível nos modais.
+- **Reagendamento Completo e RPC Transacional**:
+  - RPC SQL `public.atendimento_reagendar()` transacional e segura.
+  - Marca o agendamento anterior como `cancelado` com observação de auditoria, cria o novo agendamento com status `programado` e recalcula a fila em uma única transação atômica.
+  - Rollback automático em caso de falha de validação ou restrição de capacidade.
+- **Reorganização Automática da Fila**: Ao cancelar, agendar ou atender uma pessoa, o sistema recalcula imediatamente os `posicao_fila` restantes sem lacunas.
+- **Histórico Administrativo e Auditoria**:
+  - Tabela `atendimento_historico` como fonte única da verdade para auditoria.
+  - Registro de previsões calculadas e ações realizadas com nomes de administradores e timestamptz.
+- **Melhorias de Vocabulário & UX**:
+  - Substituição padronizada de "Paciente" por "Pessoa".
+  - Distinção entre "Novo Atendimento" (para a fila de espera) e "Programação Imediata / Encaixe Urgente".
+- **Refinamento de Modais Operacionais**:
+  - Modais "Programar Atendimento" e "Reagendar Atendimento" com reordenação de campos (1º Data do Atendimento, 2º Atendimento / Sessão).
+  - O campo de sessão inicia desabilitado com a mensagem *"Selecione primeiro a data"* e é filtrado estritamente pelas sessões válidas do dia da semana local selecionado (`day_of_week` ou `event_date`).
+  - Limpeza automática do valor da sessão selecionada caso a data seja alterada.
+  - Desduplicação estrita de opções nos selects de sessão.
+  - Rodapé fixo em dispositivos móveis respeitando safe-area, impedindo que a barra de navegação inferior cubra os botões de ação.
+- **Visualização Operacional Limpa**:
+  - Registros `cancelados` gerados por reagendamento ou cancelamento manual são ocultados por padrão da lista operacional diária "Todos os Atendimentos Programados", permanecendo 100% intactos no Banco de Dados e na aba "Histórico".
+  - Indicação visual discreta em tom âmbar abaixo da data para agendamentos oriundos de reagendamento: `🔄 Reagendado de DD/MM/AAAA para DD/MM/AAAA`.
+- **Agrupamento por Data e Identificação por Sala**:
+  - Agrupamento visual das programações por Data e Trabalho.
+  - Identificação de salas padronizada em badges pequenas: `Sala 1`, `Sala 2`, `Sala 3`.
+  - Exibição de cabeçalho único do trabalho ("Apometria") por bloco para eliminar repetição.
+- **Dashboard Operacional e Indicadores Rápidos**:
+  - Painel superior com 4 cards de acesso rápido: *Pessoas na fila*, *Atendimentos programados*, *Atendimentos de hoje*, *Urgências pendentes*.
+  - Barra de métricas secundárias: *Última atualização (HH:mm:ss)*, *Total da semana (54 vagas)* e *Taxa de ocupação (%)*.
+  - Barra de progresso visual de ocupação por sessão (ex: `6 de 9 vagas ocupadas` | `[██████░░░]`).
+- **Configuração de Vagas Recolhida**:
+  - Accordion recolhido por padrão: `⚙ Configuração de vagas` | `6 sessões • 54 vagas semanais`.
+- **Menu de Ações por Dropdown `[•••]`**:
+  - Botão secundário `[•••]` em todas as tabelas e cards para ações de *Compareceu*, *Atendimento Realizado*, *Reagendar*, *Tornar Urgente*, *Retornar à Fila* e *Excluir da Fila*.
+- **Modal Próprio de Exclusão da Fila**:
+  - Eliminação completa de `window.confirm()` nativo.
+  - Modal customizado com backdrop, card branco, ícone de alerta, botão neutro "Cancelar" e botão vermelho "Excluir da Fila" com feedback `Excluindo...`.
+
+## 10. Atualizações na Administração de Médiuns e Gestores
+
+- **Tradução Visual de Níveis de Acesso**:
+  - Mapeamento centralizado de exibição `ROLE_LABELS`: `volunteer` → **Médium**, `admin` → **Administrador**, `manager` → **Gestor**, `lanchonete` → **Lanchonete**.
+  - Mantidos os valores internos em inglês no banco de dados Supabase e em regras de RLS/autenticação.
+- **Status Operacional Ativo / Inativo**:
+  - Adicionada a coluna `active BOOLEAN NOT NULL DEFAULT true` na tabela `public.profiles` (`migration_profiles_active.sql`).
+  - Permite indicar quais voluntários estão atualmente em atividade operacional na Casa Espírita sem apagar o cadastro ou bloquear seu login/acesso ao aplicativo.
+  - Resumo no topo da aba: `50 cadastrados • 20 ativos • 30 inativos`.
+  - Filtros rápidos por status (*Todos*, *Ativos*, *Inativos*) e por nível de acesso (*Médiuns*, *Gestores*, *Administradores*).
+  - Modal interno de confirmação para alteração do status operacional restrito a administradores.
+
+## 11. Decisões de Arquitetura e Projeto
+
+1. **Separação entre Status Operacional e Acesso ao Sistema**: O campo `active` em `profiles` representa unicamente se o médium está trabalhando ativamente na Casa no momento. Ele nunca impede o login do usuário nem altera suas permissões de autenticação.
+2. **Imutabilidade do Histórico**: Transações de reagendamento ou cancelamento criam/atualizam registros e registram a movimentação no histórico imutável (`atendimento_historico`), garantindo auditoria completa sem perda de dados.
+3. **Limpeza da Lista Operacional**: Registros cancelados não pertencem à operação diária de recepção e triagem. Portanto, são ocultados da lista "Todos os Atendimentos Programados", permanecendo acessíveis unicamente no Histórico.
+4. **Encaixe Urgente Fora da Fila de Espera**: Quando um atendimento urgente é cadastrado com programação imediata, ele é inserido diretamente na tabela de programações ativas sem transitar pela fila de espera regular.
+5. **Cálculo Consistente de Previsão de Atendimento**: A previsão sempre considera sessões futuras oficiais da grade regular e calcula o tempo de espera aproximado com base na velocidade média de vazão das salas.
+6. **Disponibilidade Opcional do Atendido**: O fornecimento de restrições de horários e dias pelo atendido é 100% opcional, garantindo fluxo rápido no cadastro presencial.
+7. **Design de Baixo Ruído Visual**: A interface prioriza paleta sutil baseada em azul institucional, cores em badges para estados (`Ativo` verde, `Inativo` cinza, `Urgente` laranja), menus dropdown `[•••]` para ações secundárias e accordions para configurações acessadas com pouca frequência.
+
+## 12. Estado Atual do Módulo "Fila de Atendimento"
+
+### Funcionalidades Concluídas
+- [x] Cadastro de Pessoas na Fila de Espera com prioridade Normal/Urgente e restrições opcionais.
+- [x] Cálculo e exibição da Previsão Estimada em tempo real.
+- [x] Modal de Programar Atendimento com seleção filtrada por dia da semana da data escolhida.
+- [x] Modal de Reagendar Atendimento com transação atômica RPC no Supabase.
+- [x] Cadastro Urgente com Programação Imediata.
+- [x] Painel Dashboard Operacional com KPIs e ocupação de vagas.
+- [x] Visualização em Lista agrupada por Data e identificação por Sala 1, Sala 2 e Sala 3.
+- [x] Modal de confirmação próprio para Exclusão da Fila (sem `window.confirm()`).
+- [x] Módulo "Médiuns e Gestores" com status Ativo/Inativo e tradução de níveis de acesso.
+
+### Funcionalidades em Validação
+- [ ] Validação presencial pelos administradores da Casa durante os atendimentos públicos de Terça, Quarta e Quinta-feira.
+
+### Pendências Conhecidas / Melhorias Futuras
+- [ ] Módulo Lanchonete (previsto para V2.0).
+- [ ] Relatórios analíticos de frequência e fluxo de atendimento acumulado por mês.
