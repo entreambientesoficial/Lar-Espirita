@@ -20,6 +20,7 @@ const Agenda = () => {
     { id: 4, label: 'Quinta',  short: 'Qui' },
     { id: 5, label: 'Sexta',   short: 'Sex' },
     { id: 6, label: 'Sábado',  short: 'Sáb' },
+    { id: 0, label: 'Domingo', short: 'Dom' },
   ];
 
   // Carrega todas as atividades da semana
@@ -83,15 +84,33 @@ const Agenda = () => {
     const diff = dayIndex - today.getDay();
     const target = new Date(today);
     target.setDate(today.getDate() + diff);
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, '0');
+    const day = String(target.getDate()).padStart(2, '0');
     return {
       day:   target.getDate(),
       month: target.toLocaleDateString('pt-BR', { month: 'long' }),
+      fullDateStr: `${year}-${month}-${day}`
     };
   };
 
-  const filteredActivities = activities.filter(item => item.day_of_week === selectedDay);
   const selectedDayInfo    = getDayDate(selectedDay);
   const isToday            = selectedDay === todayDayOfWeek;
+
+  const filteredActivities = activities.filter(item => {
+    if (item.active === false) return false;
+    if (item.event_date) {
+      return item.event_date === selectedDayInfo.fullDateStr;
+    }
+    return item.day_of_week === selectedDay && !item.event_date;
+  });
+
+  const formatTime = (item) => {
+    if (item.start_time && item.end_time) {
+      return `${item.start_time.slice(0, 5)} às ${item.end_time.slice(0, 5)}`;
+    }
+    return item.time_range;
+  };
 
   return (
     <main className="max-w-md mx-auto px-6 py-8 space-y-8 font-body">
@@ -152,7 +171,7 @@ const Agenda = () => {
                   <div className="flex-1 space-y-1">
                     <div className="flex justify-between items-start">
                       <h4 className="text-lg font-bold text-primary font-headline leading-tight">{item.name}</h4>
-                      <span className="text-sm font-black text-secondary">{item.time_range}</span>
+                      <span className="text-sm font-black text-secondary">{formatTime(item)}</span>
                     </div>
                     <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
                       {item.description}

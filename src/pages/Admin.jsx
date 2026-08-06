@@ -12,6 +12,16 @@ export const formatPhone = (value) => {
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
 };
 
+const DAY_NAMES = {
+  0: 'Domingo',
+  1: 'Segunda-feira',
+  2: 'Terça-feira',
+  3: 'Quarta-feira',
+  4: 'Quinta-feira',
+  5: 'Sexta-feira',
+  6: 'Sábado'
+};
+
 const Admin = () => {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('presenca'); 
@@ -31,6 +41,20 @@ const Admin = () => {
   const [reflectionImageUrl, setReflectionImageUrl] = useState('');
   const [savingReflection, setSavingReflection] = useState(false);
 
+  // Estados da Agenda (Administração)
+  const [adminActivities, setAdminActivities] = useState([]);
+  const [loadingAdminActivities, setLoadingAdminActivities] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
+
+  const [actName, setActName] = useState('Apometria');
+  const [actDate, setActDate] = useState('');
+  const [actStartTime, setActStartTime] = useState('13:30');
+  const [actEndTime, setActEndTime] = useState('16:30');
+  const [actDescription, setActDescription] = useState('');
+  const [actDayOfWeek, setActDayOfWeek] = useState(2); // Terça
+  const [isExtraForm, setIsExtraForm] = useState(true);
+  const [savingActivity, setSavingActivity] = useState(false);
+
   useEffect(() => {
     fetchInitialData();
     const channel = supabase
@@ -39,6 +63,113 @@ const Admin = () => {
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
+
+  const loadAdminActivities = async () => {
+    setLoadingAdminActivities(true);
+    const data = await dataService.getAllActivitiesForAdmin();
+    setAdminActivities(data);
+    setLoadingAdminActivities(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'agenda') {
+      loadAdminActivities();
+    }
+  }, [activeTab]);
+
+  const resetActForm = () => {
+    setEditingActivity(null);
+    setActName('Apometria');
+    setActDate('');
+    setActStartTime('13:30');
+    setActEndTime('16:30');
+    setActDescription('');
+    setActDayOfWeek(2);
+    setIsExtraForm(true);
+  };
+
+  const handleSaveActivity = async (e) => {
+    e.preventDefault();
+    setSavingActivity(true);
+
+    let dow = Number(actDayOfWeek);
+    if (isExtraForm && actDate) {
+      const [y, m, d] = actDate.split('-').map(Number);
+      dow = new Date(y, m - 1, d).getDay();
+    }
+
+    const payload = {
+      name: actName.trim(),
+      start_time: actStartTime ? `${actStartTime}:00` : null,
+      end_time: actEndTime ? `${actEndTime}:00` : null,
+      time_range: `${actStartTime} – ${actEndTime}`,
+      description: actDescription.trim() || 'Atendimento de Apometria e apoio espiritual.',
+      day_of_week: dow,
+      event_date: isExtraForm ? (actDate || null) : null,
+      icon: 'self_improvement',
+      active: true
+    };
+
+    if (editingActivity) {
+      const { error } = await dataService.updateActivity(editingActivity.id, payload);
+      if (error) {
+        alert("Erro ao atualizar atividade: " + error.message);
+      } else {
+        alert("Atividade atualizada com sucesso!");
+        resetActForm();
+        loadAdminActivities();
+      }
+    } else {
+      const { error } = await dataService.createActivity(payload);
+      if (error) {
+        alert("Erro ao cadastrar atividade: " + error.message);
+      } else {
+        alert(isExtraForm ? "Atendimento Extra cadastrado com sucesso!" : "Atividade Regular cadastrada com sucesso!");
+        resetActForm();
+        loadAdminActivities();
+      }
+    }
+    setSavingActivity(false);
+  };
+
+  const handleToggleActive = async (item) => {
+    const { error } = await dataService.toggleActivityActive(item.id, item.active !== false);
+    if (error) {
+      alert("Erro ao alterar status: " + error.message);
+    } else {
+      loadAdminActivities();
+    }
+  };
+
+  const handleDeleteActivity = async (item) => {
+    const msg = item.event_date 
+      ? `Deseja excluir o atendimento extra "${item.name}" do dia ${item.event_date}?` 
+      : `Deseja desativar a atividade regular "${item.name}"?`;
+    
+    if (window.confirm(msg)) {
+      const { deactivated, error } = await dataService.deleteActivity(item.id);
+      if (error) {
+        alert("Erro: " + error.message);
+      } else if (deactivated) {
+        alert("Esta atividade possui presenças registradas no histórico. Ela foi desativada em vez de excluída fisicamente.");
+        loadAdminActivities();
+      } else {
+        alert("Atendimento removido com sucesso!");
+        loadAdminActivities();
+      }
+    }
+  };
+
+  const startEditActivity = (item) => {
+    setEditingActivity(item);
+    setActName(item.name || 'Apometria');
+    setActDate(item.event_date || '');
+    setActStartTime(item.start_time ? item.start_time.slice(0, 5) : (item.time_range ? item.time_range.split('–')[0].trim() : '13:30'));
+    setActEndTime(item.end_time ? item.end_time.slice(0, 5) : (item.time_range ? item.time_range.split('–')[1]?.trim() : '16:30'));
+    setActDescription(item.description || '');
+    setActDayOfWeek(item.day_of_week !== undefined ? item.day_of_week : 2);
+    setIsExtraForm(!!item.event_date);
+  };
 
   const fetchInitialData = async () => {
     // 1. Buscar confirmações de hoje (sem joins — evita falhas silenciosas do PostgREST)
@@ -181,17 +312,20 @@ const Admin = () => {
       </section>
 
       {/* Tabs */}
-      <div className="flex gap-8 border-b border-gray-200 mb-8">
-        <button onClick={() => setActiveTab('presenca')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'presenca' ? 'text-primary' : 'text-gray-400'}`}>
+      <div className="flex gap-8 border-b border-gray-200 mb-8 overflow-x-auto">
+        <button onClick={() => setActiveTab('presenca')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'presenca' ? 'text-primary' : 'text-gray-400'}`}>
           Presenças Hoje {activeTab === 'presenca' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('usuarios')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'usuarios' ? 'text-primary' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('usuarios')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'usuarios' ? 'text-primary' : 'text-gray-400'}`}>
           Médiuns e Gestores {activeTab === 'usuarios' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('agenda')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'agenda' ? 'text-primary' : 'text-gray-400'}`}>
+          Agenda e Escala {activeTab === 'agenda' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
+        </button>
+        <button onClick={() => setActiveTab('reflexao')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'reflexao' ? 'text-primary' : 'text-gray-400'}`}>
           Reflexão do Dia {activeTab === 'reflexao' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
-        <button onClick={() => setActiveTab('qrcode')} className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'qrcode' ? 'text-primary' : 'text-gray-400'}`}>
+        <button onClick={() => setActiveTab('qrcode')} className={`pb-4 px-2 font-bold transition-all relative whitespace-nowrap ${activeTab === 'qrcode' ? 'text-primary' : 'text-gray-400'}`}>
           QR Code da Casa {activeTab === 'qrcode' && <div className="absolute bottom-0 left-0 w-full h-1 bg-primary rounded-full"></div>}
         </button>
       </div>
@@ -312,6 +446,273 @@ const Admin = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : activeTab === 'agenda' ? (
+        /* Agenda Tab */
+        <div className="space-y-10 animate-in fade-in">
+          {/* Header Description */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div>
+              <h3 className="font-headline font-bold text-xl text-primary">Gerenciamento da Agenda e Atendimentos</h3>
+              <p className="text-gray-500 text-sm mt-1">Configure os horários semanais fixos ou cadastre atendimentos extras para datas específicas.</p>
+            </div>
+            {editingActivity && (
+              <button 
+                onClick={resetActForm} 
+                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all"
+              >
+                Cancelar Edição
+              </button>
+            )}
+          </div>
+
+          {/* Form: Cadastrar / Editar Atendimento */}
+          <div className="bg-primary/5 p-8 rounded-3xl border border-primary/10 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h4 className="font-headline font-bold text-lg text-primary">
+                {editingActivity ? `Editando: ${editingActivity.name}` : 'Cadastrar Novo Atendimento'}
+              </h4>
+              
+              {!editingActivity && (
+                <div className="flex bg-white p-1 rounded-xl border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsExtraForm(true)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isExtraForm ? 'bg-primary text-white shadow-sm' : 'text-gray-500'}`}
+                  >
+                    Atendimento Extra (Data)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsExtraForm(false)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isExtraForm ? 'bg-primary text-white shadow-sm' : 'text-gray-500'}`}
+                  >
+                    Atividade Regular (Semanal)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveActivity} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Nome do Atendimento</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Apometria" 
+                  value={actName} 
+                  onChange={e => setActName(e.target.value)} 
+                  required
+                  className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                />
+              </div>
+
+              {isExtraForm ? (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Data Específica</label>
+                  <input 
+                    type="date" 
+                    value={actDate} 
+                    onChange={e => setActDate(e.target.value)} 
+                    required
+                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Dia da Semana</label>
+                  <select 
+                    value={actDayOfWeek} 
+                    onChange={e => setActDayOfWeek(Number(e.target.value))} 
+                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                  >
+                    <option value={1}>Segunda-feira</option>
+                    <option value={2}>Terça-feira</option>
+                    <option value={3}>Quarta-feira</option>
+                    <option value={4}>Quinta-feira</option>
+                    <option value={5}>Sexta-feira</option>
+                    <option value={6}>Sábado</option>
+                    <option value={0}>Domingo</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Início</label>
+                  <input 
+                    type="time" 
+                    value={actStartTime} 
+                    onChange={e => setActStartTime(e.target.value)} 
+                    required
+                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Fim</label>
+                  <input 
+                    type="time" 
+                    value={actEndTime} 
+                    onChange={e => setActEndTime(e.target.value)} 
+                    required
+                    className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-primary/70 block mb-1">Descrição</label>
+                <input 
+                  type="text" 
+                  placeholder="Descrição do trabalho..." 
+                  value={actDescription} 
+                  onChange={e => setActDescription(e.target.value)}
+                  className="w-full px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none text-sm text-gray-700"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button 
+                  type="submit" 
+                  disabled={savingActivity}
+                  className="w-full py-3 px-6 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all text-sm disabled:opacity-50"
+                >
+                  {savingActivity ? 'Salvando...' : (editingActivity ? 'Salvar Alterações' : 'Cadastrar Atendimento')}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Section: Atendimentos Regulares */}
+          <div className="space-y-4">
+            <h4 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">event_repeat</span>
+              Atividades Regulares (Semanais)
+            </h4>
+
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
+              <table className="w-full text-left min-w-[650px]">
+                <thead>
+                  <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-6 py-4">Nome</th>
+                    <th className="px-6 py-4">Dia da Semana</th>
+                    <th className="px-6 py-4">Horário</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {adminActivities.filter(a => !a.event_date).map((item) => (
+                    <tr key={item.id} className={`hover:bg-gray-50/30 ${item.active === false ? 'opacity-50 bg-gray-50/50' : ''}`}>
+                      <td className="px-6 py-4 font-bold text-primary">{item.name}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-600">
+                        {DAY_NAMES[item.day_of_week] || 'Não definido'}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-gray-700">
+                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} às ${item.end_time.slice(0,5)}` : item.time_range}
+                      </td>
+                      <td className="px-6 py-4">
+                        {item.active !== false ? (
+                          <span className="px-2.5 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-full uppercase">Ativo</span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase">Inativo</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button 
+                          onClick={() => startEditActivity(item)}
+                          className="text-xs font-bold text-primary hover:underline px-2 py-1"
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => handleToggleActive(item)}
+                          className={`text-xs font-bold px-2 py-1 ${item.active !== false ? 'text-amber-600 hover:underline' : 'text-green-600 hover:underline'}`}
+                        >
+                          {item.active !== false ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {adminActivities.filter(a => !a.event_date).length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="p-8 text-center text-gray-400 text-sm italic">
+                        Nenhuma atividade regular cadastrada.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section: Atendimentos Extras (Data Específica) */}
+          <div className="space-y-4 pt-4">
+            <h4 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">event_available</span>
+              Atendimentos Extras (Data Específica)
+            </h4>
+
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
+              <table className="w-full text-left min-w-[650px]">
+                <thead>
+                  <tr className="bg-gray-50/50 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <th className="px-6 py-4">Nome</th>
+                    <th className="px-6 py-4">Data Específica</th>
+                    <th className="px-6 py-4">Dia</th>
+                    <th className="px-6 py-4">Horário</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {adminActivities.filter(a => a.event_date).map((item) => (
+                    <tr key={item.id} className={`hover:bg-gray-50/30 ${item.active === false ? 'opacity-50 bg-gray-50/50' : ''}`}>
+                      <td className="px-6 py-4 font-bold text-primary">{item.name}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-secondary">{item.event_date}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{DAY_NAMES[item.day_of_week]}</td>
+                      <td className="px-6 py-4 text-sm font-mono text-gray-700">
+                        {item.start_time && item.end_time ? `${item.start_time.slice(0,5)} às ${item.end_time.slice(0,5)}` : item.time_range}
+                      </td>
+                      <td className="px-6 py-4">
+                        {item.active !== false ? (
+                          <span className="px-2.5 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-full uppercase">Ativo</span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full uppercase">Inativo</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button 
+                          onClick={() => startEditActivity(item)}
+                          className="text-xs font-bold text-primary hover:underline px-2 py-1"
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => handleToggleActive(item)}
+                          className={`text-xs font-bold px-2 py-1 ${item.active !== false ? 'text-amber-600 hover:underline' : 'text-green-600 hover:underline'}`}
+                        >
+                          {item.active !== false ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteActivity(item)}
+                          className="text-xs font-bold text-red-500 hover:underline px-2 py-1"
+                        >
+                          Excluir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {adminActivities.filter(a => a.event_date).length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-gray-400 text-sm italic">
+                        Nenhum atendimento extra cadastrado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : activeTab === 'reflexao' ? (

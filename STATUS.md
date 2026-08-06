@@ -53,7 +53,7 @@ $$;
 
 *   `profiles`: Perfis de usuários. Colunas: `id` (uuid), `name`, `email`, `role` (`admin` | `volunteer`), `phone`, `cursos`.
 *   `pre_cadastros`: E-mails pré-aprovados pela diretoria. Sem estar aqui, nenhum e-mail externo consegue fazer login.
-*   `atividades`: Agenda da casa. Colunas: `id`, `name`, `time_range`, `description`, `day_of_week` (1=Seg…6=Sáb), `icon` (Material Symbol), `created_at`. Populada via `setup_atividades.sql`.
+*   `atividades`: Agenda da casa. Colunas: `id`, `name`, `time_range`, `start_time`, `end_time`, `description`, `day_of_week` (0=Dom, 1=Seg…6=Sáb), `event_date` (DATE NULL para extras), `active` (BOOLEAN), `icon`, `created_at`.
 *   `presencas`: Confirmações e presenças dos voluntários. Colunas: `id`, `user_id` (FK→profiles), `atividade_id` (FK→atividades), `checkin_time` (default `now()`), `qr_checkin` (boolean, default `false`).
 *   `reflexao_diaria`: Uma única linha (`id=1`) com a frase do dia (`quote`, `author`, `image_url`).
 *   `mensagens`: Mural/chat em tempo real. Colunas: `id`, `profile_id`, `content`, `is_broadcast`, `created_at`.
@@ -74,11 +74,11 @@ $$;
 - DELETE: `user_id = auth.uid() AND qr_checkin = false`
 
 ### Scripts de dados:
-*   `setup_atividades.sql` — popula `atividades` com a agenda completa. **Não usar TRUNCATE** (presencas tem FK para atividades).
+*   `migration_agenda.sql` — adiciona colunas `active`, `event_date`, `start_time`, `end_time`, índices, constraints e popula a nova grade regular de Apometria (Ter/Qua/Qui).
 
-### Token do QR Code:
-O QR Code da Casa contém o valor fixo: **`LBEB-PRESENCA-2026`**
-Definido em `src/lib/checkinToken.js`. Para alterar: edite o arquivo e reimprima pelo painel Admin.
+---
+*Status atualizado por: Inteligência Artificial (Antigravity).*
+*Fase atual: **V 1.7 — Nova grade de Apometria, suporte a atendimentos extras em datas específicas, inclusão de Domingo na agenda e nova aba de gerenciamento da Agenda na Administração**.*
 
 ## 3. Fluxo de Presença (IMPORTANTE)
 
@@ -167,4 +167,4 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 
 ---
 *Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.6 — Atualização de marca para Apometria Elos de Amor e Paz, nova logo com aura luminosa, botão "Cadastrar" no formulário de médium e ajuste do ServiceWorker em desenvolvimento**.*
+*Fase atual: **V 1.7 — Nova grade de Apometria, suporte a atendimentos extras em datas específicas, inclusão de Domingo na agenda e nova aba de gerenciamento da Agenda na Administração**.*

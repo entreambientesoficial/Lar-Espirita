@@ -9,13 +9,87 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
  * SERVIÇOS DE DADOS REAIS
  */
 export const dataService = {
-  // Buscar agenda completa
+  // Buscar agenda completa de atividades ativas
   getAgenda: async () => {
     const { data } = await supabase
       .from('atividades')
       .select('*')
-      .order('day_of_week', { ascending: true });
+      .neq('active', false)
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true, nullsFirst: false });
     return data || [];
+  },
+
+  // Buscar todas as atividades para administração (regulares e extras)
+  getAllActivitiesForAdmin: async () => {
+    const { data } = await supabase
+      .from('atividades')
+      .select('*')
+      .order('event_date', { ascending: true, nullsFirst: true })
+      .order('day_of_week', { ascending: true })
+      .order('start_time', { ascending: true, nullsFirst: false });
+    return data || [];
+  },
+
+  // Criar nova atividade (regular ou extra)
+  createActivity: async (activityData) => {
+    const { data, error } = await supabase
+      .from('atividades')
+      .insert([activityData])
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Atualizar atividade existente
+  updateActivity: async (id, activityData) => {
+    const { data, error } = await supabase
+      .from('atividades')
+      .update(activityData)
+      .eq('id', id)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Ativar/Desativar atividade
+  toggleActivityActive: async (id, currentActiveState) => {
+    const { data, error } = await supabase
+      .from('atividades')
+      .update({ active: !currentActiveState })
+      .eq('id', id)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Excluir ou desativar atividade dependendo do histórico em presencas
+  deleteActivity: async (id) => {
+    // Verifica se há presenças vinculadas
+    const { count, error: countErr } = await supabase
+      .from('presencas')
+      .select('id', { count: 'exact', head: true })
+      .eq('atividade_id', id);
+
+    if (countErr) return { error: countErr };
+
+    if (count && count > 0) {
+      // Se possui presenças vinculadas: desativa em vez de deletar
+      const { data, error } = await supabase
+        .from('atividades')
+        .update({ active: false })
+        .eq('id', id)
+        .select()
+        .single();
+      return { data, deactivated: true, error };
+    } else {
+      // Sem presenças: exclusão física permitida
+      const { error } = await supabase
+        .from('atividades')
+        .delete()
+        .eq('id', id);
+      return { deactivated: false, error };
+    }
   },
 
   // Buscar atividade confirmada pelo voluntário hoje (via confirmação na Agenda)
