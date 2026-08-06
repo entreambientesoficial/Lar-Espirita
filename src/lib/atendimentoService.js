@@ -143,20 +143,42 @@ export const atendimentoService = {
 
     const capMap = {};
     if (caps) {
-      caps.forEach(c => { capMap[c.atividade_id] = c.capacidade; });
+      caps.forEach(c => {
+        capMap[c.atividade_id] = {
+          quantidade_salas: c.quantidade_salas ?? 3,
+          atendimentos_por_sala: c.atendimentos_por_sala ?? 3,
+          capacidade: (c.quantidade_salas ?? 3) * (c.atendimentos_por_sala ?? 3),
+        };
+      });
     }
 
-    return (atividades || []).map(a => ({
-      ...a,
-      capacidade: capMap[a.id] !== undefined ? capMap[a.id] : 6,
-    }));
+    return (atividades || []).map(a => {
+      const config = capMap[a.id] || { quantidade_salas: 3, atendimentos_por_sala: 3, capacidade: 9 };
+      return {
+        ...a,
+        quantidade_salas: config.quantidade_salas,
+        atendimentos_por_sala: config.atendimentos_por_sala,
+        capacidade: config.quantidade_salas * config.atendimentos_por_sala,
+      };
+    });
   },
 
-  updateCapacidade: async (atividadeId, capacidade) => {
+  updateCapacidade: async (atividadeId, quantidadeSalas, atendimentosPorSala) => {
+    const qSalas = Math.max(1, parseInt(quantidadeSalas, 10) || 3);
+    const aPorSala = Math.max(1, parseInt(atendimentosPorSala, 10) || 3);
+    const capacidadeCalculada = qSalas * aPorSala;
+
     const { data, error } = await supabase
       .from('atendimento_capacidades')
       .upsert(
-        { atividade_id: atividadeId, capacidade, active: true, updated_at: new Date().toISOString() },
+        {
+          atividade_id: atividadeId,
+          quantidade_salas: qSalas,
+          atendimentos_por_sala: aPorSala,
+          capacidade: capacidadeCalculada,
+          active: true,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: 'atividade_id' }
       )
       .select()
@@ -166,25 +188,94 @@ export const atendimentoService = {
     return data;
   },
 
-  // 7. Cálculo de Previsão Aproximada
+  /**
+   * 7. Cálculo de Previsão Realista baseada nas sessões existentes e vagas disponíveis
+   */
+  calculatePrevisaoReal: (posicaoFila, capacidades = [], programacoes = []) => {
+    if (!posicaoFila || posicaoFila <= 0) return null;
+    if (!capacidades || capacidades.length === 0) {
+      return { text: 'Aguardando sessões', formattedDate: null };
+    }
+
+    const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+    // Mapeia ocupação por sessão e data YYYY-MM-DD_atividadeId
+    const ocupacaoMap = {};
+    (programacoes || []).forEach(p => {
+      if (p.event_date && p.status !== 'cancelado') {
+        const key = `${p.event_date}_${p.atividade_id}`;
+        ocupacaoMap[key] = (ocupacaoMap[key] || 0) + 1;
+      }
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const sessoesProjetadas = [];
+
+    for (let dayOffset = 0; dayOffset <= 365; dayOffset++) {
+      const currentDate = new Date(today);
+      currentDate.setDate(currentDate.getDate() + dayOffset);
+
+      const dow = currentDate.getDay();
+      const dateStr = currentDate.toISOString().split('T')[0];
+
+      // Sessões regulares nesse dia da semana
+      const regSessoes = capacidades.filter(c => c.day_of_week === dow && !c.event_date);
+      // Sessões extras nessa data exata
+      const extraSessoes = capacidades.filter(c => c.event_date === dateStr);
+
+      const sessoesDoDia = [...regSessoes, ...extraSessoes];
+      sessoesDoDia.sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'));
+
+      sessoesDoDia.forEach(sessao => {
+        const capTotal = sessao.capacidade || (sessao.quantidade_salas * sessao.atendimentos_por_sala) || 9;
+        const ocupado = ocupacaoMap[`${dateStr}_${sessao.id}`] || 0;
+        const vagasLivres = Math.max(0, capTotal - ocupado);
+
+        if (vagasLivres > 0) {
+          sessoesProjetadas.push({
+            dateStr,
+            dowName: DAY_NAMES[dow],
+            timeStr: sessao.start_time ? sessao.start_time.slice(0, 5) : '13:30',
+            atividadeName: sessao.name,
+            vagasLivres,
+          });
+        }
+      });
+    }
+
+    let pessoasAlocadas = 0;
+    for (const sessao of sessoesProjetadas) {
+      if (pessoasAlocadas + sessao.vagasLivres >= posicaoFila) {
+        const parts = sessao.dateStr.split('-');
+        const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+
+        return {
+          formattedDate,
+          rawDate: sessao.dateStr,
+          dayOfWeek: sessao.dowName,
+          time: sessao.timeStr,
+          atividadeName: sessao.atividadeName,
+          text: `${formattedDate} (${sessao.dowName} - ${sessao.timeStr})`,
+        };
+      }
+      pessoasAlocadas += sessao.vagasLivres;
+    }
+
+    return { text: 'Previsão além de 1 ano', formattedDate: null };
+  },
+
+  // Mantido para compatibilidade prévia se necessário
   calculatePrevisao: (posicaoFila, totalCapacidadeSemanal) => {
     if (!posicaoFila || posicaoFila <= 0) return 'Previsão ainda não disponível';
     if (!totalCapacidadeSemanal || totalCapacidadeSemanal <= 0) {
       return 'Configure a quantidade de atendimentos por sessão para calcular a previsão.';
     }
-
     const semanasEstimadas = Math.ceil(posicaoFila / totalCapacidadeSemanal);
     const minSemanas = Math.max(1, semanasEstimadas - 1);
     const maxSemanas = semanasEstimadas + 1;
-
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + semanasEstimadas * 7);
-
-    const monthName = targetDate.toLocaleDateString('pt-BR', { month: 'long' });
-    const quinzena = targetDate.getDate() <= 15 ? 'primeira quinzena' : 'segunda quinzena';
-    const year = targetDate.getFullYear();
-
-    return `Previsão aproximada: ${minSemanas} a ${maxSemanas} semanas (${quinzena} de ${monthName} de ${year})`;
+    return `${minSemanas} a ${maxSemanas} semanas`;
   },
 
   // 8. Programar Atendimento (Via RPC Transacional)
@@ -313,11 +404,11 @@ export const atendimentoService = {
     if (error) console.error('Erro ao registrar histórico:', error);
   },
 
-  // 14. Buscar Histórico Geral de Auditoria
+  // 14. Buscar Histórico Geral de Auditoria com Relacionamentos Completos
   getHistoricoGeral: async () => {
     const { data, error } = await supabase
       .from('atendimento_historico')
-      .select('*, atendimento_pessoas(nome), profiles(name)')
+      .select('*, atendimento_pessoas(*), atendimento_programacoes(*), profiles(name)')
       .order('created_at', { ascending: false })
       .limit(200);
 

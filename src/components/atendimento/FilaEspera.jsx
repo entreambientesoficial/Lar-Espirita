@@ -10,6 +10,7 @@ const FilaEspera = ({ onShowToast }) => {
   const { profile } = useAuth();
   const [pessoas, setPessoas] = useState([]);
   const [capacidades, setCapacidades] = useState([]);
+  const [programacoes, setProgramacoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filtros & Busca
@@ -46,6 +47,9 @@ const FilaEspera = ({ onShowToast }) => {
 
       const caps = await atendimentoService.getCapacidades();
       setCapacidades(caps);
+
+      const progs = await atendimentoService.getAllProgramacoes();
+      setProgramacoes(progs);
     } catch (err) {
       console.error(err);
       onShowToast('Erro ao carregar fila de espera: ' + err.message, 'error');
@@ -55,7 +59,7 @@ const FilaEspera = ({ onShowToast }) => {
   };
 
   // Total de vagas semanais configuradas
-  const totalWeeklyCapacity = capacidades.reduce((acc, c) => acc + (c.capacidade || 6), 0);
+  const totalWeeklyCapacity = capacidades.reduce((acc, c) => acc + (c.capacidade || 9), 0);
 
   const handleOpenCadastro = (person = null) => {
     setEditingPerson(person);
@@ -98,94 +102,71 @@ const FilaEspera = ({ onShowToast }) => {
       }
       loadData();
     } catch (err) {
-      onShowToast('Erro ao alterar urgência: ' + err.message, 'error');
+      onShowToast('Erro ao alterar prioridade: ' + err.message, 'error');
     }
   };
 
   const handleDelete = async (person) => {
-    if (window.confirm(`Deseja remover "${person.nome}" da fila de espera?`)) {
-      try {
-        await atendimentoService.deletePessoa(person.id);
-        onShowToast('Pessoa removida da fila.', 'success');
-        loadData();
-      } catch (err) {
-        onShowToast(err.message, 'error');
-      }
+    if (!window.confirm(`Tem certeza que deseja excluir ${person.nome} da fila de espera?`)) {
+      return;
     }
-  };
-
-  const handleConfirmUrgentBump = async () => {
-    if (!urgentBumpData) return;
     try {
-      await atendimentoService.remanejarEInserirUrgencia({
-        pessoaUrgenteId: urgentBumpData.person.id,
-        atividadeId: urgentBumpData.atividade.id,
-        eventDate: urgentBumpData.eventDate,
-        startTime: urgentBumpData.atividade.start_time,
-        endTime: urgentBumpData.atividade.end_time,
-        pessoaParaRemanejarId: urgentBumpData.lastNormalPerson?.pessoa_id,
-      });
-
-      onShowToast('Atendimento urgente inserido e remanejamento realizado com sucesso!', 'success');
-      setUrgentBumpData(null);
+      await atendimentoService.deletePessoa(person.id);
+      onShowToast('Pessoa excluída da fila com sucesso!', 'success');
       loadData();
     } catch (err) {
-      onShowToast('Erro ao remanejar: ' + err.message, 'error');
+      onShowToast('Erro ao excluir: ' + err.message, 'error');
     }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      {/* Top Banner & Previsão Info */}
-      <div className="bg-gradient-to-r from-primary to-primary/95 text-white p-6 rounded-3xl shadow-lg space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-4">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary">Fila de Espera Ativa</span>
-            <h3 className="text-2xl font-headline font-bold">Fila Geral de Atendimento</h3>
-          </div>
-          <button
-            onClick={() => handleOpenCadastro()}
-            className="bg-white text-primary px-5 py-3 rounded-2xl font-bold text-xs shadow-md hover:bg-gray-50 transition-all flex items-center gap-2 active:scale-95 shrink-0"
-          >
-            <span className="material-symbols-outlined text-lg">person_add</span>
-            Cadastrar Pessoa na Fila
-          </button>
+      {/* Header com Resumo de Capacidade e botão Novo Cadastro */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h3 className="font-headline font-bold text-2xl text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-2xl">format_list_numbered</span>
+            Fila de Espera dos Pacientes
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Gestão da fila para atendimento. Posições atualizadas automaticamente.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-            <span className="text-[10px] text-white/70 uppercase font-bold tracking-wider block">Aguardando na Fila</span>
-            <span className="text-xl font-bold font-headline">{pessoas.length} pessoas</span>
-          </div>
-
-          <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-            <span className="text-[10px] text-white/70 uppercase font-bold tracking-wider block">Capacidade Semanal</span>
-            <span className="text-xl font-bold font-headline">{totalWeeklyCapacity} vagas/semana</span>
-          </div>
-
-          <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm">
-            <span className="text-[10px] text-white/70 uppercase font-bold tracking-wider block">Regra de Cálculo</span>
-            <span className="text-xs font-medium text-white/90">
-              {totalWeeklyCapacity > 0 ? 'Previsão aproximada e dinâmica' : 'Aguardando capacidade'}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10 text-right">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary block">
+              Capacidade Semanal
+            </span>
+            <span className="text-sm font-black text-primary">
+              {totalWeeklyCapacity} vagas/semana
             </span>
           </div>
+
+          <button
+            onClick={() => handleOpenCadastro()}
+            className="px-5 py-3 bg-primary text-white font-bold rounded-2xl text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-base">person_add</span>
+            Cadastrar Pessoa
+          </button>
         </div>
       </div>
 
-      {/* Barra de Busca e Filtros */}
-      <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="w-full md:w-80 relative">
-          <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400 text-lg">search</span>
+      {/* Barra de Filtros e Busca */}
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="w-full sm:w-80 relative">
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-base">search</span>
           <input
             type="text"
             placeholder="Buscar por nome ou telefone..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-primary outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           <select
             value={prioridadeFilter}
             onChange={e => setPrioridadeFilter(e.target.value)}
@@ -221,13 +202,13 @@ const FilaEspera = ({ onShowToast }) => {
                   <th className="px-5 py-4">Nome / Telefone</th>
                   <th className="px-5 py-4">Entrada</th>
                   <th className="px-5 py-4">Tipo / Prioridade</th>
-                  <th className="px-5 py-4">Previsão Aproximada</th>
+                  <th className="px-5 py-4">Previsão Estimada</th>
                   <th className="px-5 py-4 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {pessoas.map((item, index) => {
-                  const previsaoText = atendimentoService.calculatePrevisao(item.posicao_fila, totalWeeklyCapacity);
+                {pessoas.map((item) => {
+                  const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes);
                   const isUrgente = item.prioridade === 'Urgente';
 
                   return (
@@ -263,8 +244,15 @@ const FilaEspera = ({ onShowToast }) => {
                         )}
                       </td>
 
-                      <td className="px-5 py-4 text-xs font-medium text-secondary max-w-xs">
-                        {previsaoText}
+                      <td className="px-5 py-4 text-xs font-medium max-w-xs">
+                        {prev?.formattedDate ? (
+                          <div className="flex flex-col">
+                            <span className="font-bold text-primary text-xs">{prev.formattedDate}</span>
+                            <span className="text-[10px] text-gray-500 font-medium">{prev.dayOfWeek} - {prev.time}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic">{prev?.text || 'Aguardando sessões'}</span>
+                        )}
                       </td>
 
                       <td className="px-5 py-4 text-right space-x-1 whitespace-nowrap">
@@ -323,7 +311,7 @@ const FilaEspera = ({ onShowToast }) => {
           {/* Cards para Celular */}
           <div className="grid grid-cols-1 gap-4 lg:hidden">
             {pessoas.map((item) => {
-              const previsaoText = atendimentoService.calculatePrevisao(item.posicao_fila, totalWeeklyCapacity);
+              const prev = atendimentoService.calculatePrevisaoReal(item.posicao_fila, capacidades, programacoes);
               const isUrgente = item.prioridade === 'Urgente';
 
               return (
@@ -364,8 +352,17 @@ const FilaEspera = ({ onShowToast }) => {
                         Motivo Urgência: {item.motivo_urgencia}
                       </div>
                     )}
-                    <div className="text-secondary font-bold pt-1 border-t border-gray-200/50">
-                      {previsaoText}
+                    <div className="text-primary font-bold pt-1 border-t border-gray-200/50 flex items-center justify-between text-xs">
+                      <span className="text-gray-500 font-normal">Previsão:</span>
+                      <span className="text-right">
+                        {prev?.formattedDate ? (
+                          <span className="font-bold text-primary">
+                            {prev.formattedDate} ({prev.dayOfWeek} - {prev.time})
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 font-normal italic">{prev?.text || '-'}</span>
+                        )}
+                      </span>
                     </div>
                   </div>
 
@@ -399,8 +396,15 @@ const FilaEspera = ({ onShowToast }) => {
                         <span className="material-symbols-outlined text-lg">swap_vert</span>
                       </button>
                       <button
+                        onClick={() => handleToggleUrgencia(item)}
+                        className={`p-2 rounded-xl bg-gray-50 ${isUrgente ? 'text-amber-600' : 'text-gray-400'}`}
+                        title={isUrgente ? 'Remover urgência' : 'Marcar como urgente'}
+                      >
+                        <span className="material-symbols-outlined text-lg">priority_high</span>
+                      </button>
+                      <button
                         onClick={() => handleDelete(item)}
-                        className="p-2 text-red-500 bg-red-50 rounded-xl hover:bg-red-100"
+                        className="p-2 text-gray-400 bg-gray-50 rounded-xl hover:text-red-600"
                         title="Excluir"
                       >
                         <span className="material-symbols-outlined text-lg">delete</span>
@@ -413,13 +417,12 @@ const FilaEspera = ({ onShowToast }) => {
           </div>
         </div>
       ) : (
-        <div className="bg-gray-50 rounded-3xl p-12 text-center space-y-2 border-2 border-dashed border-gray-200">
-          <span className="material-symbols-outlined text-4xl text-gray-300">hourglass_empty</span>
-          <p className="text-gray-500 text-sm font-medium">Nenhuma pessoa aguardando na fila com os filtros selecionados.</p>
+        <div className="bg-gray-50 rounded-3xl p-12 text-center text-gray-400 italic border border-dashed border-gray-200">
+          Nenhuma pessoa aguardando na fila no momento.
         </div>
       )}
 
-      {/* Modais da Fila */}
+      {/* Modais */}
       <ModalCadastroPessoa
         isOpen={isCadastroModalOpen}
         onClose={() => setIsCadastroModalOpen(false)}
@@ -431,13 +434,8 @@ const FilaEspera = ({ onShowToast }) => {
         isOpen={isProgramarModalOpen}
         onClose={() => setIsProgramarModalOpen(false)}
         person={programarPerson}
-        onProgrammed={(msg) => {
-          onShowToast(msg, 'success');
-          loadData();
-        }}
-        onRequestUrgentBump={(bumpData) => {
-          setUrgentBumpData(bumpData);
-        }}
+        onProgrammed={handleSavedPessoa}
+        onRequestUrgentBump={(bumpData) => setUrgentBumpData(bumpData)}
       />
 
       <ModalMoverPosicao
@@ -445,15 +443,14 @@ const FilaEspera = ({ onShowToast }) => {
         onClose={() => setIsMoveModalOpen(false)}
         person={movePerson}
         maxPosition={pessoas.length}
-        onMoved={handleMovePos}
+        onMove={handleMovePos}
       />
 
       <ModalReorganizacaoUrgente
         isOpen={!!urgentBumpData}
         onClose={() => setUrgentBumpData(null)}
-        onConfirm={handleConfirmUrgentBump}
-        sessionInfo={urgentBumpData}
-        lastNormalPerson={urgentBumpData?.lastNormalPerson}
+        bumpData={urgentBumpData}
+        onConfirmed={(msg) => handleSavedPessoa(msg)}
       />
     </div>
   );
