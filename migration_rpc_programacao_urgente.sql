@@ -17,7 +17,11 @@ CREATE OR REPLACE FUNCTION public.atendimento_cadastrar_e_programar_urgente(
   p_event_date DATE,
   p_start_time TIME,
   p_end_time TIME,
-  p_force_over_capacity BOOLEAN DEFAULT false
+  p_force_over_capacity BOOLEAN DEFAULT false,
+  p_dias_disponiveis JSONB DEFAULT NULL,
+  p_periodos_disponiveis JSONB DEFAULT NULL,
+  p_datas_indisponiveis JSONB DEFAULT NULL,
+  p_observacoes_disponibilidade TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -56,10 +60,10 @@ BEGIN
 
   v_admin_id := auth.uid();
 
-  -- Advisory lock transacional para concorrência
-  PERFORM pg_advisory_xact_lock(74639202);
+  -- Advisory lock transacional padronizado do módulo
+  PERFORM pg_advisory_xact_lock(74639201);
 
-  -- 2. Validar parâmetros obrigatórios
+  -- 2. Validar parâmetros obrigatórios de dados e horários
   IF p_nome IS NULL OR trim(p_nome) = '' THEN
     RAISE EXCEPTION 'O nome da pessoa é obrigatório.';
   END IF;
@@ -88,7 +92,7 @@ BEGIN
     RAISE EXCEPTION 'O horário de término deve ser posterior ao horário de início.';
   END IF;
 
-  -- 3. Validar existência da atividade no banco
+  -- 3. Validar existência da atividade e correspondência estrita de datas/horários
   SELECT event_date, day_of_week, start_time, end_time
   INTO v_atv_event_date, v_atv_dow, v_atv_start, v_atv_end
   FROM public.atividades
@@ -96,6 +100,24 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'A sessão/atividade selecionada é inválida ou está inativa.';
+  END IF;
+
+  -- Validação de correspondência de dia da semana ou data do evento
+  IF v_atv_event_date IS NULL THEN
+    IF v_atv_dow IS NOT NULL AND EXTRACT(DOW FROM p_event_date)::INTEGER != v_atv_dow THEN
+      RAISE EXCEPTION 'A data informada (%s) não corresponde ao dia da semana oficial desta atividade regular.', p_event_date;
+    END IF;
+  ELSE
+    IF p_event_date != v_atv_event_date THEN
+      RAISE EXCEPTION 'Para atendimentos extras, a data informada (%s) deve ser exatamente igual à data cadastrada no evento (%s).', p_event_date, v_atv_event_date;
+    END IF;
+  END IF;
+
+  -- Validação de correspondência com os horários oficiais da sessão
+  IF v_atv_start IS NOT NULL AND v_atv_end IS NOT NULL THEN
+    IF p_start_time != v_atv_start OR p_end_time != v_atv_end THEN
+      RAISE EXCEPTION 'Os horários fornecidos (%s - %s) não correspondem aos horários oficiais da sessão (%s - %s).', p_start_time, p_end_time, v_atv_start, v_atv_end;
+    END IF;
   END IF;
 
   -- 4. Checar capacidade da sessão e efetuar desencaixe se cheia e ignorar capacidade ativo
@@ -248,9 +270,21 @@ BEGIN
     );
   END IF;
 
-  -- 5. Cadastrar pessoa com prioridade Urgente e status programado
+  -- 5. Cadastrar pessoa com prioridade Urgente, status programado e restrições de disponibilidade
   INSERT INTO public.atendimento_pessoas (
-    nome, telefone, tipo_atendimento, prioridade, motivo_urgencia, observacoes, data_entrada, status, posicao_fila
+    nome,
+    telefone,
+    tipo_atendimento,
+    prioridade,
+    motivo_urgencia,
+    observacoes,
+    data_entrada,
+    status,
+    posicao_fila,
+    dias_disponiveis,
+    periodos_disponiveis,
+    datas_indisponiveis,
+    observacoes_disponibilidade
   ) VALUES (
     trim(p_nome),
     NULLIF(trim(p_telefone), ''),
@@ -260,7 +294,11 @@ BEGIN
     NULLIF(trim(p_observacoes), ''),
     p_data_entrada,
     'programado',
-    NULL
+    NULL,
+    p_dias_disponiveis,
+    p_periodos_disponiveis,
+    p_datas_indisponiveis,
+    NULLIF(trim(p_observacoes_disponibilidade), '')
   ) RETURNING * INTO v_person;
 
   -- 6. Recalcular ocupação ativa da sessão após remanejamento
@@ -301,13 +339,13 @@ BEGIN
 END;
 $$;
 
--- Permissões REVOKE e GRANT
+-- Permissões REVOKE e GRANT com Assinatura Completa
 REVOKE ALL ON FUNCTION public.atendimento_cadastrar_e_programar_urgente(
-  TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN
+  TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN, JSONB, JSONB, JSONB, TEXT
 ) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.atendimento_cadastrar_e_programar_urgente(
-  TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN
+  TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN, JSONB, JSONB, JSONB, TEXT
 ) TO authenticated;
 
 -- Forçar recarga do schema cache do PostgREST

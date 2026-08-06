@@ -99,27 +99,13 @@ export const atendimentoService = {
       p_start_time: startTime,
       p_end_time: endTime,
       p_force_over_capacity: forceOverCapacity,
+      p_dias_disponiveis: dias_disponiveis || null,
+      p_periodos_disponiveis: periodos_disponiveis || null,
+      p_datas_indisponiveis: datas_indisponiveis || null,
+      p_observacoes_disponibilidade: observacoes_disponibilidade || null,
     });
 
     if (error) throw error;
-
-    if (
-      dias_disponiveis ||
-      periodos_disponiveis ||
-      datas_indisponiveis ||
-      observacoes_disponibilidade
-    ) {
-      await supabase
-        .from('atendimento_pessoas')
-        .update({
-          dias_disponiveis: dias_disponiveis || null,
-          periodos_disponiveis: periodos_disponiveis || null,
-          datas_indisponiveis: datas_indisponiveis || null,
-          observacoes_disponibilidade: observacoes_disponibilidade || null,
-        })
-        .eq('id', data.id);
-    }
-
     return data;
   },
 
