@@ -107,16 +107,27 @@ const FilaEspera = ({ onShowToast }) => {
     }
   };
 
-  const handleDelete = async (person) => {
-    if (!window.confirm(`Tem certeza que deseja excluir ${person.nome} da fila de espera?`)) {
-      return;
-    }
+  // Modal de Exclusão da Fila
+  const [deleteModalPerson, setDeleteModalPerson] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = (person) => {
+    setDeleteModalPerson(person);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalPerson || isDeleting) return;
+
+    setIsDeleting(true);
     try {
-      await atendimentoService.deletePessoa(person.id);
-      onShowToast('Pessoa excluída da fila com sucesso!', 'success');
+      await atendimentoService.deletePessoa(deleteModalPerson.id);
+      onShowToast(`${deleteModalPerson.nome} foi removido(a) da fila com sucesso.`, 'success');
+      setDeleteModalPerson(null);
       loadData();
     } catch (err) {
-      onShowToast('Erro ao excluir: ' + err.message, 'error');
+      onShowToast('Erro ao excluir da fila: ' + err.message, 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -486,6 +497,57 @@ const FilaEspera = ({ onShowToast }) => {
         bumpData={urgentBumpData}
         onConfirmed={(msg) => handleSavedPessoa(msg)}
       />
+
+      {/* Modal Próprio de Confirmação de Exclusão da Fila */}
+      {deleteModalPerson && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full space-y-4 border border-gray-100 shadow-2xl animate-in zoom-in-95 my-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">warning</span>
+              </div>
+              <h4 className="font-headline font-bold text-lg text-primary">
+                Excluir da Fila?
+              </h4>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Tem certeza de que deseja remover <strong className="text-primary font-bold">{deleteModalPerson.nome}</strong> da fila de espera?
+            </p>
+
+            <p className="text-[11px] text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-100 italic">
+              Essa ação removerá a pessoa da fila e as posições seguintes serão reorganizadas automaticamente.
+            </p>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalPerson(null)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl text-xs shadow-md shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                    Excluindo...
+                  </>
+                ) : (
+                  'Excluir da Fila'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
