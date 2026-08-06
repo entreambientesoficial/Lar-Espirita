@@ -12,9 +12,6 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   // Estado do Accordion de Configuração de Vagas (Fechado por padrão)
   const [isConfigOpen, setIsConfigOpen] = useState(false);
 
-  // Filtro discreto: mostrar cancelados e finalizados (Desativado por padrão)
-  const [showAllStatus, setShowAllStatus] = useState(false);
-
   // Estados para edição por sessão: { [atividadeId]: { qSalas: number, aPorSala: number } }
   const [editingCapMap, setEditingCapMap] = useState({});
   const [savingCapId, setSavingCapId] = useState(null);
@@ -111,47 +108,26 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   const numSessoes = capacidades.length;
   const avgVagasPorSessao = numSessoes > 0 ? Math.round(totalWeeklyCapacity / numSessoes) : 9;
 
-  // Filtragem padrão: exibe apenas 'programado' e 'compareceu'. Oculta cancelados e atendidos a menos que ativado.
-  const filteredProgramacoes = (programacoes || []).filter(p => {
-    if (showAllStatus) return true;
-    return ['programado', 'compareceu'].includes(p.status);
-  });
+  // Filtragem estrita da lista operacional: exibe unicamente status 'programado' e 'compareceu'
+  const activeProgramacoes = (programacoes || []).filter(p => ['programado', 'compareceu'].includes(p.status));
 
   return (
     <div className="space-y-8 animate-in fade-in">
       {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Foco na operação diária) */}
       <div className="space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-amber-600">event</span>
             Todos os Atendimentos Programados
           </h3>
-          
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            <button
-              type="button"
-              onClick={() => setShowAllStatus(!showAllStatus)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-                showAllStatus
-                  ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-sm'
-                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">
-                {showAllStatus ? 'visibility' : 'visibility_off'}
-              </span>
-              Mostrar cancelados e finalizados
-            </button>
-
-            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {programacoes.filter(p => ['programado', 'compareceu'].includes(p.status)).length} ativos
-            </span>
-          </div>
+          <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            {activeProgramacoes.length} ativos
+          </span>
         </div>
 
         {loading ? (
           <div className="py-12 text-center text-gray-400 italic">Carregando agendamentos...</div>
-        ) : filteredProgramacoes.length > 0 ? (
+        ) : activeProgramacoes.length > 0 ? (
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 overflow-x-auto">
             <table className="w-full text-left min-w-[750px]">
               <thead>
@@ -165,15 +141,32 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {filteredProgramacoes.map(p => {
+                {activeProgramacoes.map(p => {
                   const activityName = p.atividades?.name || 'Apometria';
                   const dow = p.atividades?.day_of_week;
                   const roomNum = getRoomNum(dow);
+                  const currDateFormatted = p.event_date ? p.event_date.split('-').reverse().join('/') : '-';
+
+                  // Busca agendamento cancelado anterior da mesma pessoa para identificação discreta de reagendamento
+                  const prevCancelled = (programacoes || []).find(oldP =>
+                    oldP.pessoa_id === p.pessoa_id &&
+                    oldP.status === 'cancelado' &&
+                    oldP.id !== p.id
+                  );
+                  const prevDateFormatted = prevCancelled?.event_date ? prevCancelled.event_date.split('-').reverse().join('/') : null;
 
                   return (
                     <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 font-bold text-primary">
-                        {p.event_date ? p.event_date.split('-').reverse().join('/') : '-'}
+                        <div>{currDateFormatted}</div>
+                        {prevDateFormatted && (
+                          <div className="mt-1">
+                            <span className="text-[10px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200/70 inline-flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">update</span>
+                              Reagendado de {prevDateFormatted} para {currDateFormatted}
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-800">
                         {p.atendimento_pessoas?.nome || 'Pessoa sem nome'}
