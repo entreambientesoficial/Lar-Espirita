@@ -241,19 +241,17 @@ export const atendimentoService = {
 
     const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
-    // Mapeia ocupação por sessão e data YYYY-MM-DD_atividadeId
+    // Mapeia ocupação por sessão e data YYYY-MM-DD_atividadeId (Apenas agendamentos ativos)
     const ocupacaoMap = {};
     (programacoes || []).forEach(p => {
-      if (p.event_date && p.status !== 'cancelado') {
+      if (p.event_date && ['programado', 'compareceu'].includes(p.status)) {
         const key = `${p.event_date}_${p.atividade_id}`;
         ocupacaoMap[key] = (ocupacaoMap[key] || 0) + 1;
       }
     });
 
-    // Extrai data de referência da entrada (sessionDate MUST BE strictly > dataEntradaRef)
     const dataEntradaRef = pessoa?.data_entrada || new Date().toISOString().split('T')[0];
 
-    // Extrai restrições de disponibilidade do paciente
     const diasDisp = Array.isArray(pessoa?.dias_disponiveis) ? pessoa.dias_disponiveis.map(Number) : null;
     const periodosDisp = Array.isArray(pessoa?.periodos_disponiveis) ? pessoa.periodos_disponiveis : null;
     const datasIndisp = Array.isArray(pessoa?.datas_indisponiveis) ? pessoa.datas_indisponiveis : [];
@@ -389,7 +387,7 @@ export const atendimentoService = {
     return { overCapacity: false, programacao_id: data.programacao_id };
   },
 
-  // 8.1 Reagendar Atendimento (Cancela anterior, programa novo e registra histórico detalhado)
+  // 8.1 Reagendar Atendimento (Via RPC Transacional Única no PostgreSQL)
   reagendarAtendimento: async ({
     pessoaId,
     oldProgramacaoId,
@@ -399,40 +397,20 @@ export const atendimentoService = {
     endTime,
     observacoes = '',
     forceOverCapacity = false,
+    ignoreAvailabilityConflict = false,
   }) => {
-    // 1. Cancela a programação anterior se informada
-    if (oldProgramacaoId) {
-      await supabase
-        .from('atendimento_programacoes')
-        .update({ status: 'cancelado', updated_at: new Date().toISOString() })
-        .eq('id', oldProgramacaoId);
-    }
-
-    // 2. Executa a nova programação via RPC transacional
-    const { data, error } = await supabase.rpc('atendimento_programar_pessoa', {
-      p_pessoa_id: pessoaId,
-      p_atividade_id: atividadeId,
-      p_event_date: eventDate,
-      p_start_time: startTime,
-      p_end_time: endTime,
+    const { data, error } = await supabase.rpc('atendimento_reagendar_programacao', {
+      p_programacao_id: oldProgramacaoId,
+      p_nova_atividade_id: atividadeId,
+      p_nova_event_date: eventDate,
+      p_nova_start_time: startTime,
+      p_nova_end_time: endTime,
       p_observacoes: observacoes || null,
       p_force_over_capacity: forceOverCapacity,
+      p_ignore_availability_conflict: ignoreAvailabilityConflict,
     });
 
     if (error) throw error;
-
-    // 3. Registra ação no histórico
-    if (data && data.programacao_id) {
-      await atendimentoService.logHistorico({
-        pessoa_id: pessoaId,
-        programacao_id: data.programacao_id,
-        action: 'REAGENDAMENTO_ATENDIMENTO',
-        dados_anteriores: oldProgramacaoId ? { programacao_id: oldProgramacaoId } : null,
-        dados_novos: { programacao_id: data.programacao_id, event_date: eventDate, atividade_id: atividadeId },
-        observacao: `Reagendado para ${eventDate} (${startTime ? startTime.slice(0,5) : ''}). ${observacoes || ''}`.trim(),
-      });
-    }
-
     return data;
   },
 

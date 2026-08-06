@@ -1,18 +1,10 @@
 -- ============================================================
--- Migration Idempotente e Transacional: Disponibilidade e RPC Reagendamento Atendimento
+-- Migration Idempotente e Transacional: RPC Reagendamento Atendimento
 -- Projeto: Portal do Voluntário - Apometria Elos de Amor e Paz
 -- ============================================================
 
 BEGIN;
 
--- 1. Adicionar colunas de disponibilidade na tabela atendimento_pessoas (Idempotente)
-ALTER TABLE public.atendimento_pessoas 
-ADD COLUMN IF NOT EXISTS dias_disponiveis JSONB NULL,
-ADD COLUMN IF NOT EXISTS periodos_disponiveis JSONB NULL,
-ADD COLUMN IF NOT EXISTS datas_indisponiveis JSONB NULL,
-ADD COLUMN IF NOT EXISTS observacoes_disponibilidade TEXT NULL;
-
--- 2. Definir a RPC Transacional de Reagendamento
 CREATE OR REPLACE FUNCTION public.atendimento_reagendar_programacao(
   p_programacao_id UUID,
   p_nova_atividade_id UUID,
@@ -320,14 +312,14 @@ BEGIN
   SET status = 'cancelado', updated_at = NOW()
   WHERE id = p_programacao_id;
 
-  -- 7. Recalcular a ocupação ativa final da sessão de destino após cancelamentos e remanejamentos
+  -- 7. Recalcular a ocupação ativa final da sessão de destino após eventuais cancelamentos/remanejamentos
   SELECT COUNT(*) INTO v_count
   FROM public.atendimento_programacoes
   WHERE atividade_id = p_nova_atividade_id 
     AND event_date = p_nova_event_date 
     AND status IN ('programado', 'compareceu');
 
-  -- 8. Criar nova programação para a pessoa com a ordem da sessão mesma e rigorosamente recalculada
+  -- 8. Criar nova programação para a pessoa com a ordem da sessão rigorosamente recalculada
   INSERT INTO public.atendimento_programacoes (
     pessoa_id, atividade_id, event_date, start_time, end_time, ordem_sessao, prioridade, status, observacoes
   ) VALUES (
