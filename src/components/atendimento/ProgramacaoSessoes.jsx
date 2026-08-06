@@ -90,6 +90,19 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
     6: 'Sábado',
   };
 
+  /**
+   * Mapeamento exclusivamente visual da Sala com base no dia da semana (UI apenas):
+   * Terça-feira (2) -> Sala 1
+   * Quarta-feira (3) -> Sala 2
+   * Quinta-feira (4) -> Sala 3
+   */
+  const getRoomNum = (dow) => {
+    if (dow === 2) return 1;
+    if (dow === 3) return 2;
+    if (dow === 4) return 3;
+    return 1;
+  };
+
   // Cálculos de resumo para a barra do Accordion
   const totalWeeklyCapacity = capacidades.reduce((acc, c) => acc + (c.capacidade || 9), 0);
   const numSessoes = capacidades.length;
@@ -97,7 +110,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in">
-      {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Visível no Topo) */}
+      {/* 1. SEÇÃO PRINCIPAL: Todos os Atendimentos Programados (Foco na operação diária) */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
@@ -127,9 +140,8 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
               <tbody className="divide-y divide-gray-100 text-sm">
                 {programacoes.map(p => {
                   const activityName = p.atividades?.name || 'Apometria';
-                  // Identificação visual dinâmica da Sala baseada no encaixe por sessão (UI apenas)
-                  const roomNum = p.ordem_sessao ? Math.ceil(p.ordem_sessao / 3) : 1;
-                  const displaySessao = `${activityName} • Sala ${roomNum}`;
+                  const dow = p.atividades?.day_of_week;
+                  const roomNum = getRoomNum(dow);
 
                   return (
                     <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
@@ -140,18 +152,21 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                         {p.atendimento_pessoas?.nome || 'Pessoa sem nome'}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-primary block">{displaySessao}</span>
-                        {p.start_time && (
-                          <span className="text-xs text-gray-400 font-mono">
-                            {p.start_time.slice(0, 5)}
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-900 text-sm">{activityName}</span>
+                          <span className="inline-block w-fit px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 rounded-md text-[11px] font-extrabold my-0.5">
+                            Sala {roomNum}
                           </span>
-                        )}
+                          <span className="text-xs text-gray-400 font-mono">
+                            {DAY_NAMES[dow] || ''} {p.start_time ? `• ${p.start_time.slice(0, 5)}` : ''}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold ${
                           p.prioridade === 'Urgente'
                             ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-blue-50 text-blue-700'
+                            : 'bg-sky-50 text-sky-700'
                         }`}>
                           {p.prioridade}
                         </span>
@@ -159,8 +174,8 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                           p.status === 'programado' ? 'bg-indigo-50 text-indigo-700' :
-                          p.status === 'compareceu' ? 'bg-emerald-50 text-emerald-700' :
-                          p.status === 'atendido' ? 'bg-green-100 text-green-800' :
+                          p.status === 'compareceu' ? 'bg-green-100 text-green-800' :
+                          p.status === 'atendido' ? 'bg-emerald-100 text-emerald-900' :
                           'bg-gray-100 text-gray-600'
                         }`}>
                           {p.status}
@@ -192,7 +207,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
         )}
       </div>
 
-      {/* 2. SEÇÃO SECUNDÁRIA: Configuração de Vagas por Sessão (Accordion Fechado por Padrão) */}
+      {/* 2. SEÇÃO SECUNDÁRIA: Configuração de Vagas por Sessão (Accordion Recolhido por Padrão) */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden transition-all">
         <button
           type="button"
@@ -200,13 +215,13 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
           className="w-full p-6 sm:p-8 flex items-center justify-between text-left hover:bg-gray-50/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl">meeting_room</span>
+            <div className="w-10 h-10 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl">settings</span>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-headline font-bold text-xl text-primary">Configuração de vagas</h3>
-                <span className="px-3 py-1 bg-primary/5 text-primary border border-primary/10 rounded-full font-bold text-xs">
+                <h3 className="font-headline font-bold text-xl text-primary">⚙ Configuração de Vagas</h3>
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200/60 rounded-full font-bold text-xs">
                   {numSessoes} sessões • {avgVagasPorSessao} vagas por sessão • {totalWeeklyCapacity} vagas por semana
                 </span>
               </div>
@@ -230,15 +245,19 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                 const numSalas = parseInt(config.qSalas, 10) || 0;
                 const numAtend = parseInt(config.aPorSala, 10) || 0;
                 const capCalculada = Math.max(0, numSalas * numAtend);
+                const roomNum = getRoomNum(item.day_of_week);
 
                 return (
                   <div key={item.id} className="bg-gray-50 p-5 rounded-2xl border border-gray-200/70 space-y-4 shadow-sm">
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-bold text-primary text-base">
-                          {item.name} • {numSalas} {numSalas === 1 ? 'Sala' : 'Salas'}
+                          {item.name}
                         </h4>
-                        <span className="text-xs text-gray-500 font-medium block mt-0.5">
+                        <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300/60 rounded-md font-extrabold text-[11px] my-1">
+                          Sala {roomNum}
+                        </span>
+                        <span className="text-xs text-gray-500 font-medium block">
                           {DAY_NAMES[item.day_of_week]} • {item.start_time ? item.start_time.slice(0, 5) : item.time_range}
                         </span>
                       </div>
