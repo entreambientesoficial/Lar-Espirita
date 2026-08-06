@@ -247,5 +247,18 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 
 ### Pendências Conhecidas / Melhorias Futuras
 - [ ] **Formulário Público por Link (Pré-solicitação)**: Link gerado para Instagram/WhatsApp onde a pessoa solicita atendimento público sem login. Entra como `aguardando_analise` em uma fila prévia de triagem para revisão administrativa antes de ser promovido à Fila de Espera regular.
+- [ ] **Biblioteca / Centro de Estudos (Melhoria Futura)**:
+  - **Objetivo**: Criar um módulo permanente de materiais de estudo para os médiuns, utilizando a infraestrutura já existente do Portal.
+  - **Motivação**: Disponibilização inicial do eBook de Apometria e futuros materiais de estudo da Casa.
+  - **Implementação Prevista**:
+    - Utilizar a tela Mural (`Messages.jsx`) como ponto de acesso aos materiais.
+    - Manter o chat do mural para comunicação diária entre administração e médiuns.
+    - Adicionar uma seção permanente denominada **"Materiais da Casa"** separada da área de mensagens (os materiais não ficam perdidos no fluxo de conversas).
+    - Cada item terá: *Título*, *Descrição*, *Autor*, *Data da última atualização*, botão *Ler* e botão *Download* (opcional).
+  - **Primeira Publicação Prevista**: eBook de Apometria desenvolvido para estudos da Casa.
+  - **Evolução Futura**:
+    - Expansão para Regulamento Interno, Manual do Médium, Apostilas, PDFs, Vídeos, Áudios e Comunicados Permanentes.
+    - Funcionalidades desejadas em versões futuras: leitor interno de PDF, memorização da última página lida, busca por palavras-chave no texto, favoritos, histórico de leitura e categorias.
 - [ ] Módulo Lanchonete (previsto para V2.0).
 - [ ] Relatórios analíticos de frequência e fluxo de atendimento acumulado por mês.
+
