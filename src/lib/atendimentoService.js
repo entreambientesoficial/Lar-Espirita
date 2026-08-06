@@ -50,6 +50,38 @@ export const atendimentoService = {
     return data;
   },
 
+  // 2.1 Cadastrar e programar diretamente pessoa urgente (Com reagendamento automático em vaga futura)
+  createAndProgramUrgente: async ({
+    nome,
+    telefone,
+    tipo_atendimento,
+    motivo_urgencia,
+    observacoes,
+    data_entrada,
+    atividadeId,
+    eventDate,
+    startTime,
+    endTime,
+    forceOverCapacity = false,
+  }) => {
+    const { data, error } = await supabase.rpc('atendimento_cadastrar_e_programar_urgente', {
+      p_nome: nome,
+      p_telefone: telefone || null,
+      p_tipo_atendimento: tipo_atendimento || 'Apometria',
+      p_motivo_urgencia: motivo_urgencia,
+      p_observacoes: observacoes || null,
+      p_data_entrada: data_entrada || new Date().toISOString().split('T')[0],
+      p_atividade_id: atividadeId,
+      p_event_date: eventDate,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_force_over_capacity: forceOverCapacity,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
   // 3. Atualizar dados cadastrais de uma pessoa
   updatePessoa: async (id, updates) => {
     const { data: previous } = await supabase

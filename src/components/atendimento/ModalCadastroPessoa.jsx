@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { atendimentoService } from '../../lib/atendimentoService';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved }) => {
@@ -13,8 +14,21 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
   const [motivoUrgencia, setMotivoUrgencia] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [placeAsPriority, setPlaceAsPriority] = useState(false);
+
+  // Estados para a Programação Imediata (Opcional) de Urgências
+  const [atividades, setAtividades] = useState([]);
+  const [dataProgramacao, setDataProgramacao] = useState('');
+  const [sessaoId, setSessaoId] = useState('');
+  const [forceOverCapacity, setForceOverCapacity] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAtividades();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (editingPerson) {
@@ -26,10 +40,26 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
       setMotivoUrgencia(editingPerson.motivo_urgencia || '');
       setObservacoes(editingPerson.observacoes || '');
       setPlaceAsPriority(false);
+      setDataProgramacao('');
+      setSessaoId('');
+      setForceOverCapacity(false);
     } else {
       resetForm();
     }
   }, [editingPerson, isOpen]);
+
+  const loadAtividades = async () => {
+    try {
+      const { data } = await supabase
+        .from('atividades')
+        .select('*')
+        .eq('active', true)
+        .order('name', { ascending: true });
+      setAtividades(data || []);
+    } catch (err) {
+      console.error('Erro ao carregar sessões:', err);
+    }
+  };
 
   const resetForm = () => {
     setNome('');
@@ -40,6 +70,9 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
     setMotivoUrgencia('');
     setObservacoes('');
     setPlaceAsPriority(false);
+    setDataProgramacao('');
+    setSessaoId('');
+    setForceOverCapacity(false);
     setErrorMsg('');
   };
 
@@ -75,7 +108,32 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           }
         );
         onSaved('Pessoa atualizada com sucesso!');
+      } else if (prioridade === 'Urgente' && dataProgramacao && sessaoId) {
+        // Opção 4: Programação Imediata de Urgência
+        const selectedAtividade = atividades.find(a => a.id === sessaoId);
+        if (!selectedAtividade) {
+          setErrorMsg('Selecione uma sessão válida para a programação imediata.');
+          setLoading(false);
+          return;
+        }
+
+        await atendimentoService.createAndProgramUrgente({
+          nome: nome.trim(),
+          telefone: telefone.trim() || null,
+          tipo_atendimento: tipoAtendimento,
+          motivo_urgencia: motivoUrgencia.trim(),
+          observacoes: observacoes.trim() || null,
+          data_entrada: dataEntrada,
+          atividadeId: sessaoId,
+          eventDate: dataProgramacao,
+          startTime: selectedAtividade.start_time,
+          endTime: selectedAtividade.end_time,
+          forceOverCapacity,
+        });
+
+        onSaved('Pessoa cadastrada e programada com sucesso para a sessão escolhida!');
       } else {
+        // Comportamento normal de cadastro na fila
         await atendimentoService.createPessoa(
           {
             nome: nome.trim(),
@@ -199,7 +257,7 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
           </div>
 
           {prioridade === 'Urgente' && (
-            <div className="space-y-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-200 animate-in fade-in">
+            <div className="space-y-4 bg-amber-50/70 p-4 rounded-2xl border border-amber-200 animate-in fade-in">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block mb-1">
                   Motivo da Urgência *
@@ -215,18 +273,73 @@ const ModalCadastroPessoa = ({ isOpen, onClose, editingPerson = null, onSaved })
               </div>
 
               {!editingPerson && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="placeAsPriority"
-                    checked={placeAsPriority}
-                    onChange={e => setPlaceAsPriority(e.target.checked)}
-                    className="w-4 h-4 text-primary rounded focus:ring-primary"
-                  />
-                  <label htmlFor="placeAsPriority" className="text-xs font-bold text-amber-900 cursor-pointer">
-                    Inserir na 1ª posição da fila de espera
-                  </label>
-                </div>
+                <>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="placeAsPriority"
+                      checked={placeAsPriority}
+                      onChange={e => setPlaceAsPriority(e.target.checked)}
+                      className="w-4 h-4 text-primary rounded focus:ring-primary"
+                    />
+                    <label htmlFor="placeAsPriority" className="text-xs font-bold text-amber-900 cursor-pointer">
+                      Inserir na 1ª posição da fila de espera
+                    </label>
+                  </div>
+
+                  {/* Bloco: Programação Imediata (Opcional) */}
+                  <div className="pt-3 border-t border-amber-200/60 space-y-3">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                      <span className="material-symbols-outlined text-base text-amber-700">event_available</span>
+                      Programação Imediata (Opcional)
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block mb-1">
+                          Data do Atendimento
+                        </label>
+                        <input
+                          type="date"
+                          value={dataProgramacao}
+                          onChange={e => setDataProgramacao(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl outline-none text-xs font-bold text-amber-950"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block mb-1">
+                          Sessão
+                        </label>
+                        <select
+                          value={sessaoId}
+                          onChange={e => setSessaoId(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl outline-none text-xs font-bold text-amber-950"
+                        >
+                          <option value="">Selecione uma sessão...</option>
+                          {atividades.map(atv => (
+                            <option key={atv.id} value={atv.id}>
+                              {atv.name} ({atv.start_time ? atv.start_time.slice(0,5) : ''})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="forceOverCapacity"
+                        checked={forceOverCapacity}
+                        onChange={e => setForceOverCapacity(e.target.checked)}
+                        className="w-4 h-4 text-amber-700 rounded focus:ring-amber-500"
+                      />
+                      <label htmlFor="forceOverCapacity" className="text-xs font-semibold text-amber-950 cursor-pointer">
+                        Ignorar capacidade e encaixar como urgência
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

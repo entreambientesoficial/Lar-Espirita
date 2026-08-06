@@ -307,6 +307,209 @@ BEGIN
 END;
 $$;
 
+-- RPC 1.1: Cadastrar e Programar Imediatamente Paciente Urgente com Reagendamento Automático em Vaga Futura
+CREATE OR REPLACE FUNCTION public.atendimento_cadastrar_e_programar_urgente(
+  p_nome TEXT,
+  p_telefone TEXT,
+  p_tipo_atendimento TEXT,
+  p_motivo_urgencia TEXT,
+  p_observacoes TEXT,
+  p_data_entrada DATE,
+  p_atividade_id UUID,
+  p_event_date DATE,
+  p_start_time TIME,
+  p_end_time TIME,
+  p_force_over_capacity BOOLEAN
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_admin_id UUID;
+  v_new_person public.atendimento_pessoas;
+  v_cap_max INT;
+  v_count INT;
+  v_last_normal_prog public.atendimento_programacoes;
+  v_next_date DATE;
+  v_search_date DATE;
+  v_found_slot BOOLEAN := false;
+  v_future_count INT;
+  v_atv_dow INT;
+  v_atv_event_date DATE;
+  v_atv_start TIME;
+  v_atv_end TIME;
+  v_new_prog public.atendimento_programacoes;
+  v_reagendado_prog public.atendimento_programacoes;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Acesso negado: Apenas administradores podem executar esta ação.';
+  END IF;
+
+  v_admin_id := auth.uid();
+
+  PERFORM pg_advisory_xact_lock(74639201);
+
+  -- Validações básicas de entrada
+  IF p_nome IS NULL OR trim(p_nome) = '' THEN
+    RAISE EXCEPTION 'O nome da pessoa não pode ficar em branco.';
+  END IF;
+
+  IF p_motivo_urgencia IS NULL OR trim(p_motivo_urgencia) = '' THEN
+    RAISE EXCEPTION 'Para atendimentos urgentes, o motivo da urgência é obrigatório.';
+  END IF;
+
+  SELECT event_date, day_of_week, start_time, end_time 
+  INTO v_atv_event_date, v_atv_dow, v_atv_start, v_atv_end
+  FROM public.atividades
+  WHERE id = p_atividade_id AND active = true;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'A atividade/sessão selecionada é inválida ou está inativa.';
+  END IF;
+
+  IF p_event_date < CURRENT_DATE THEN
+    RAISE EXCEPTION 'A data do atendimento não pode ser anterior à data atual.';
+  END IF;
+
+  IF v_atv_event_date IS NULL THEN
+    IF v_atv_dow IS NOT NULL AND EXTRACT(DOW FROM p_event_date)::INTEGER != v_atv_dow THEN
+      RAISE EXCEPTION 'A data selecionada (%s) não corresponde ao dia da semana oficial desta atividade regular.', p_event_date;
+    END IF;
+  ELSE
+    IF p_event_date != v_atv_event_date THEN
+      RAISE EXCEPTION 'Para atendimentos extras, a data informada (%s) deve ser exatamente igual à data cadastrada no evento (%s).', p_event_date, v_atv_event_date;
+    END IF;
+  END IF;
+
+  -- Busca capacidade máxima e agendamentos atuais na sessão
+  SELECT COALESCE(capacidade, 6) INTO v_cap_max
+  FROM public.atendimento_capacidades
+  WHERE atividade_id = p_atividade_id;
+  IF v_cap_max IS NULL THEN v_cap_max := 6; END IF;
+
+  SELECT COUNT(*) INTO v_count
+  FROM public.atendimento_programacoes
+  WHERE atividade_id = p_atividade_id AND event_date = p_event_date AND status != 'cancelado';
+
+  -- Se sessão estiver cheia
+  IF v_count >= v_cap_max THEN
+    IF NOT p_force_over_capacity THEN
+      RAISE EXCEPTION 'A sessão selecionada já atingiu a capacidade máxima (%s vagas). Marque a opção "Ignorar capacidade e encaixar como urgência" para realizar o remanejamento.', v_cap_max;
+    END IF;
+
+    -- Localiza o último paciente NORMAL programado nesta sessão
+    SELECT * INTO v_last_normal_prog
+    FROM public.atendimento_programacoes
+    WHERE atividade_id = p_atividade_id AND event_date = p_event_date AND status = 'programado' AND prioridade = 'Normal'
+    ORDER BY ordem_sessao DESC
+    LIMIT 1;
+
+    IF v_last_normal_prog.id IS NULL THEN
+      RAISE EXCEPTION 'A sessão está cheia apenas com pacientes Urgentes. Não há nenhum paciente Normal que possa ser remanejado nesta sessão.';
+    END IF;
+
+    -- Busca próxima sessão futura com vaga disponível (até 52 semanas no futuro)
+    IF v_atv_event_date IS NULL THEN
+      v_search_date := p_event_date + INTERVAL '7 days';
+      FOR i IN 1..52 LOOP
+        SELECT COUNT(*) INTO v_future_count
+        FROM public.atendimento_programacoes
+        WHERE atividade_id = p_atividade_id AND event_date = v_search_date AND status != 'cancelado';
+
+        IF v_future_count < v_cap_max THEN
+          v_next_date := v_search_date;
+          v_found_slot := true;
+          EXIT;
+        END IF;
+        v_search_date := v_search_date + INTERVAL '7 days';
+      END LOOP;
+    ELSE
+      SELECT event_date INTO v_next_date
+      FROM public.atividades
+      WHERE name = (SELECT name FROM public.atividades WHERE id = p_atividade_id)
+        AND active = true
+        AND event_date > p_event_date
+      ORDER BY event_date ASC
+      LIMIT 1;
+
+      IF v_next_date IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_future_count
+        FROM public.atendimento_programacoes
+        WHERE atividade_id = p_atividade_id AND event_date = v_next_date AND status != 'cancelado';
+        IF v_future_count < v_cap_max THEN
+          v_found_slot := true;
+        END IF;
+      END IF;
+    END IF;
+
+    IF NOT v_found_slot OR v_next_date IS NULL THEN
+      RAISE EXCEPTION 'Não foi encontrada nenhuma sessão futura com vaga disponível para reagendar o paciente desencaixado. Operação cancelada.';
+    END IF;
+
+    -- Cancela o agendamento atual da pessoa normal
+    UPDATE public.atendimento_programacoes
+    SET status = 'cancelado', updated_at = NOW()
+    WHERE id = v_last_normal_prog.id;
+
+    -- Reagenda o paciente normal diretamente para a próxima sessão futura com vaga
+    INSERT INTO public.atendimento_programacoes (
+      pessoa_id, atividade_id, event_date, start_time, end_time, ordem_sessao, prioridade, status, observacoes
+    ) VALUES (
+      v_last_normal_prog.pessoa_id, p_atividade_id, v_next_date, COALESCE(p_start_time, v_atv_start), COALESCE(p_end_time, v_atv_end), v_future_count + 1, 'Normal', 'programado', 'Reagendado automaticamente devido a encaixe de urgência'
+    ) RETURNING * INTO v_reagendado_prog;
+
+    INSERT INTO public.atendimento_historico (
+      pessoa_id, programacao_id, admin_id, action, dados_anteriores, dados_novos, observacao
+    ) VALUES (
+      v_last_normal_prog.pessoa_id,
+      v_reagendado_prog.id,
+      v_admin_id,
+      'REMANEJAMENTO_URGENCIA_REAGENDADO',
+      to_jsonb(v_last_normal_prog),
+      to_jsonb(v_reagendado_prog),
+      format('Desencaixado da sessão do dia %s devido a urgência e reagendado automaticamente para a próxima sessão livre em %s.', p_event_date, v_next_date)
+    );
+  END IF;
+
+  -- 4. Cadastra a nova pessoa urgente com status = 'programado' e posicao_fila = NULL
+  INSERT INTO public.atendimento_pessoas (
+    nome, telefone, tipo_atendimento, prioridade, motivo_urgencia, observacoes, data_entrada, status, posicao_fila
+  ) VALUES (
+    trim(p_nome),
+    NULLIF(trim(p_telefone), ''),
+    COALESCE(NULLIF(trim(p_tipo_atendimento), ''), 'Apometria'),
+    'Urgente',
+    trim(p_motivo_urgencia),
+    NULLIF(trim(p_observacoes), ''),
+    COALESCE(p_data_entrada, CURRENT_DATE),
+    'programado',
+    NULL
+  ) RETURNING * INTO v_new_person;
+
+  -- 5. Programação do paciente urgente na sessão escolhida
+  INSERT INTO public.atendimento_programacoes (
+    pessoa_id, atividade_id, event_date, start_time, end_time, ordem_sessao, prioridade, status, observacoes
+  ) VALUES (
+    v_new_person.id, p_atividade_id, p_event_date, COALESCE(p_start_time, v_atv_start), COALESCE(p_end_time, v_atv_end), v_count + 1, 'Urgente', 'programado', 'Cadastrado e programado diretamente como Urgência'
+  ) RETURNING * INTO v_new_prog;
+
+  -- Histórico do cadastro urgente
+  INSERT INTO public.atendimento_historico (
+    pessoa_id, programacao_id, admin_id, action, dados_novos, observacao
+  ) VALUES (
+    v_new_person.id,
+    v_new_prog.id,
+    v_admin_id,
+    'CADASTRO_E_PROGRAMACAO_URGENTE',
+    to_jsonb(v_new_prog),
+    format('Cadastrado como Urgência e programado diretamente para a sessão do dia %s.', p_event_date)
+  );
+
+  RETURN to_jsonb(v_new_person);
+END;
+$$;
+
 -- RPC 2: Mover Posição na Fila de Forma Segura em 2 Etapas com Faixa Dinâmica
 CREATE OR REPLACE FUNCTION public.atendimento_mover_posicao(
   p_pessoa_id UUID,
@@ -437,7 +640,7 @@ BEGIN
 
   -- Validações de Horário e Data Básicas
   IF p_event_date IS NULL THEN
-    RAISE EXCEPTION 'A data do atendimento é obrigatória.';
+    RAISE EXCEPTION 'A data do atendimento é obrigatoria.';
   END IF;
 
   IF p_event_date < CURRENT_DATE THEN
@@ -783,6 +986,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public._atendimento_inserir_na_fila_seguro(UUID, INT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.atendimento_cadastrar_pessoa(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, BOOLEAN) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.atendimento_cadastrar_e_programar_urgente(TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.atendimento_mover_posicao(UUID, INT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.atendimento_programar_pessoa(UUID, UUID, DATE, TIME, TIME, TEXT, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.atendimento_remanejar_urgencia(UUID, UUID, DATE, TIME, TIME, UUID) FROM PUBLIC;
@@ -790,6 +994,7 @@ REVOKE ALL ON FUNCTION public.atendimento_atualizar_status_programacao(UUID, TEX
 REVOKE ALL ON FUNCTION public.atendimento_excluir_pessoa(UUID) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.atendimento_cadastrar_pessoa(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.atendimento_cadastrar_e_programar_urgente(TEXT, TEXT, TEXT, TEXT, TEXT, DATE, UUID, DATE, TIME, TIME, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.atendimento_mover_posicao(UUID, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.atendimento_programar_pessoa(UUID, UUID, DATE, TIME, TIME, TEXT, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.atendimento_remanejar_urgencia(UUID, UUID, DATE, TIME, TIME, UUID) TO authenticated;
