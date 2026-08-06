@@ -248,7 +248,7 @@ const Admin = () => {
                 className="px-4 py-3 bg-white rounded-xl border-none shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
               />
               <button type="submit" className="px-4 py-3 bg-primary text-white font-bold rounded-xl hover:brightness-110 transition-all">
-                Autorizar Acesso
+                Cadastrar
               </button>
             </form>
 
@@ -401,7 +401,7 @@ const Admin = () => {
             </div>
 
             <div id="qrcode-print-area" className="bg-white p-6 rounded-2xl border-2 border-gray-100 flex flex-col items-center gap-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Lar Beneficente Eurípedes Barsanulfo</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary/40">Apometria Elos de Amor e Paz</p>
               <QRCodeSVG
                 value={CHECKIN_TOKEN}
                 size={220}

@@ -93,7 +93,7 @@ O fluxo correto é em **dois passos**:
 ## 4. Páginas e Funcionalidades
 
 ### Acesso Geral (Voluntários)
-*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Fundo com imagem `tela-login.png`. Botão Google com feedback visual de clique.
+*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Fundo responsivo com a imagem espiritual `capa-apometria.jpg` ajustada no modo `bg-contain bg-center`, garantindo que a imagem escale para se encaixar perfeitamente na tela sem cortes. Textos e links auxiliares com micro-pílulas translúcidas escuras (`bg-slate-950/80 backdrop-blur-md`), garantindo 100% de legibilidade e alto contraste. Botão Google com feedback visual de clique.
 *   **`Layout.jsx`**: Navbar inferior flutuante. Esconde abas de Admin para `role = volunteer`.
 *   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (cursos/telefone) no primeiro acesso. Banner de instalação PWA (Android/Chrome).
 *   **`Agenda.jsx`**: Agenda semanal (Seg–Sáb). Para o dia atual: botão "Confirmar Presença" funcional (insere em `presencas`) ou "Confirmado ✓ + Cancelar". Para outros dias: aviso "Confirmação disponível no dia".
@@ -166,5 +166,5 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 *   RLS aplicado nas tabelas `lanche_*`
 
 ---
-*Status atualizado por: Inteligência Artificial (Claude Sonnet 4.6).*
-*Fase atual: **V 1.4 — PWA instalável + imagem de fundo da tela de login**.*
+*Status atualizado por: Inteligência Artificial (Antigravity).*
+*Fase atual: **V 1.5 — PWA instalável + imagem de fundo da tela de login (capa -apometria.jpg) ajustada com visibilidade total e alta legibilidade**.*
