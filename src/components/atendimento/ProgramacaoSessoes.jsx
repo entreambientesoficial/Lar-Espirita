@@ -8,7 +8,7 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   const [programacoes, setProgramacoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para edição rápida de capacidade
+  // Estados para edição por sessão: { [atividadeId]: { qSalas: number, aPorSala: number } }
   const [editingCapMap, setEditingCapMap] = useState({});
   const [savingCapId, setSavingCapId] = useState(null);
 
@@ -23,7 +23,12 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
       setCapacidades(caps);
 
       const capMap = {};
-      caps.forEach(c => { capMap[c.id] = c.capacidade || 6; });
+      caps.forEach(c => {
+        capMap[c.id] = {
+          qSalas: c.quantidade_salas !== undefined ? c.quantidade_salas : 3,
+          aPorSala: c.atendimentos_por_sala !== undefined ? c.atendimentos_por_sala : 3,
+        };
+      });
       setEditingCapMap(capMap);
 
       const progs = await atendimentoService.getAllProgramacoes();
@@ -37,19 +42,26 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
   };
 
   const handleSaveCapacidade = async (atividadeId) => {
-    const val = parseInt(editingCapMap[atividadeId], 10);
-    if (isNaN(val) || val < 1) {
-      onShowToast('Por favor, informe um número de vagas válido (mínimo 1).', 'error');
+    const config = editingCapMap[atividadeId] || { qSalas: 3, aPorSala: 3 };
+    const qSalas = parseInt(config.qSalas, 10);
+    const aPorSala = parseInt(config.aPorSala, 10);
+
+    if (isNaN(qSalas) || qSalas < 1) {
+      onShowToast('Informe uma quantidade de salas válida (mínimo 1).', 'error');
+      return;
+    }
+    if (isNaN(aPorSala) || aPorSala < 1) {
+      onShowToast('Informe uma quantidade de atendimentos por sala válida (mínimo 1).', 'error');
       return;
     }
 
     setSavingCapId(atividadeId);
     try {
-      await atendimentoService.updateCapacidade(atividadeId, val, profile.id);
-      onShowToast('Capacidade da sessão atualizada com sucesso!', 'success');
+      await atendimentoService.updateCapacidade(atividadeId, qSalas, aPorSala);
+      onShowToast('Configuração de vagas atualizada com sucesso!', 'success');
       loadData();
     } catch (err) {
-      onShowToast('Erro ao atualizar capacidade: ' + err.message, 'error');
+      onShowToast('Erro ao atualizar vagas: ' + err.message, 'error');
     } finally {
       setSavingCapId(null);
     }
@@ -72,54 +84,88 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-4">
           <div>
             <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">settings_suggest</span>
+              <span className="material-symbols-outlined text-primary">meeting_room</span>
               Configuração de Vagas por Sessão
             </h3>
             <p className="text-xs text-gray-500 mt-1">
-              Defina a quantidade máxima de pessoas atendidas em cada trabalho regular.
+              Defina a quantidade de salas e atendimentos por sala para calcular a capacidade máxima de cada trabalho.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {capacidades.map((item) => (
-            <div key={item.id} className="bg-gray-50 p-5 rounded-2xl border border-gray-200/70 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-bold text-primary text-base">{item.name}</h4>
-                  <span className="text-xs text-gray-500 font-medium">
-                    {DAY_NAMES[item.day_of_week]} • {item.start_time ? item.start_time.slice(0, 5) : item.time_range}
-                  </span>
-                </div>
-                <span className="w-8 h-8 bg-primary/5 text-primary rounded-xl flex items-center justify-center font-bold text-sm">
-                  {editingCapMap[item.id] || 6}
-                </span>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {capacidades.map((item) => {
+            const config = editingCapMap[item.id] || { qSalas: 3, aPorSala: 3 };
+            const numSalas = parseInt(config.qSalas, 10) || 0;
+            const numAtend = parseInt(config.aPorSala, 10) || 0;
+            const capCalculada = Math.max(0, numSalas * numAtend);
 
-              <div className="flex items-center gap-2 pt-2 border-t border-gray-200/50">
-                <div className="flex-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">
-                    Vagas por sessão
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={editingCapMap[item.id] !== undefined ? editingCapMap[item.id] : 6}
-                    onChange={e => setEditingCapMap({ ...editingCapMap, [item.id]: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-primary text-center"
-                  />
+            return (
+              <div key={item.id} className="bg-gray-50 p-5 rounded-2xl border border-gray-200/70 space-y-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-bold text-primary text-base">{item.name}</h4>
+                    <span className="text-xs text-gray-500 font-medium block mt-0.5">
+                      {DAY_NAMES[item.day_of_week]} • {item.start_time ? item.start_time.slice(0, 5) : item.time_range}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 block">Capacidade</span>
+                    <span className="inline-block px-2.5 py-1 bg-primary text-white rounded-xl font-bold text-xs shadow-sm">
+                      {capCalculada} vagas
+                    </span>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleSaveCapacidade(item.id)}
-                  disabled={savingCapId === item.id}
-                  className="mt-4 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {savingCapId === item.id ? 'Salvando...' : 'Salvar'}
-                </button>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-200/60">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                      Salas
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={config.qSalas}
+                      onChange={e => setEditingCapMap({
+                        ...editingCapMap,
+                        [item.id]: { ...config, qSalas: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-primary text-center outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                      Atend. / Sala
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={config.aPorSala}
+                      onChange={e => setEditingCapMap({
+                        ...editingCapMap,
+                        [item.id]: { ...config, aPorSala: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-primary text-center outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-gray-200/60 text-xs font-semibold text-gray-600">
+                  <div className="text-[11px]">
+                    Salas: <strong className="text-primary">{numSalas}</strong> | Atend./sala: <strong className="text-primary">{numAtend}</strong>
+                  </div>
+                  <button
+                    onClick={() => handleSaveCapacidade(item.id)}
+                    disabled={savingCapId === item.id}
+                    className="w-full sm:w-auto px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-sm hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {savingCapId === item.id ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {capacidades.length === 0 && (
             <div className="col-span-3 text-center py-8 text-gray-400 italic">
@@ -150,39 +196,35 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
                   <th className="px-6 py-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {programacoes.map((prog) => (
-                  <tr key={prog.id} className="hover:bg-gray-50/30">
-                    <td className="px-6 py-4 text-sm font-bold text-secondary">
-                      {prog.event_date ? prog.event_date.split('-').reverse().join('/') : '-'}
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {programacoes.map(p => (
+                  <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-primary">
+                      {p.event_date ? p.event_date.split('-').reverse().join('/') : '-'}
+                    </td>
+                    <td className="px-6 py-4 font-bold text-gray-800">
+                      {p.atendimento_pessoas?.nome || 'Paciente sem nome'}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 font-medium">
+                      {p.atividades?.name || 'Sessão'}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-bold text-primary text-sm">{prog.atendimento_pessoas?.nome || 'Sem nome'}</div>
-                      <div className="text-xs text-gray-400 font-mono">{prog.atendimento_pessoas?.telefone}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">
-                      {prog.atividades?.name || 'Apometria'} ({prog.start_time ? prog.start_time.slice(0, 5) : '13:30'})
-                    </td>
-                    <td className="px-6 py-4">
-                      {prog.prioridade === 'Urgente' ? (
-                        <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-[10px] font-black rounded-full uppercase">
-                          Urgente
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[10px] font-black rounded-full uppercase">
-                          Normal
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase ${
-                        prog.status === 'atendido' ? 'bg-emerald-50 text-emerald-700' :
-                        prog.status === 'compareceu' ? 'bg-blue-50 text-blue-700' :
-                        prog.status === 'nao_compareceu' ? 'bg-amber-50 text-amber-700' :
-                        prog.status === 'cancelado' ? 'bg-red-50 text-red-600' :
-                        'bg-gray-100 text-gray-700'
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold ${
+                        p.prioridade === 'Urgente'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-blue-50 text-blue-700'
                       }`}>
-                        {prog.status}
+                        {p.prioridade}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                        p.status === 'programado' ? 'bg-indigo-50 text-indigo-700' :
+                        p.status === 'compareceu' ? 'bg-emerald-50 text-emerald-700' :
+                        p.status === 'atendido' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {p.status}
                       </span>
                     </td>
                   </tr>
@@ -191,8 +233,8 @@ const ProgramacaoSessoes = ({ onShowToast }) => {
             </table>
           </div>
         ) : (
-          <div className="bg-gray-50 rounded-3xl p-12 text-center text-gray-400 italic border border-dashed border-gray-200">
-            Nenhum atendimento programado até o momento.
+          <div className="bg-white rounded-3xl p-12 text-center text-gray-400 italic border border-gray-100 shadow-sm">
+            Nenhum agendamento programado até o momento.
           </div>
         )}
       </div>
