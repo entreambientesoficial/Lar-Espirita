@@ -65,8 +65,8 @@ const BemVindo = () => {
       {/* Subtle Overlay */}
       <div className="fixed inset-0 z-1 bg-black/20 backdrop-blur-[0.5px]" />
 
-      {/* TOP SECTION: Header right below the top lotus symbol */}
-      <div className="relative z-10 w-full max-w-md pt-2 sm:pt-4 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+      {/* TOP SECTION: Header positioned below the top golden lotus symbol */}
+      <div className="relative z-10 w-full max-w-md pt-12 sm:pt-16 md:pt-20 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex flex-col items-center space-y-2">
           <div className="relative w-16 h-16 sm:w-20 sm:h-20 group">
             {/* Soft Luminous Aura Glow */}
@@ -86,9 +86,6 @@ const BemVindo = () => {
             <h1 className="text-lg sm:text-xl font-extrabold text-white font-headline tracking-tight leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
               Apometria Elos de Amor e Paz
             </h1>
-            <p className="mt-1 text-blue-100 font-black text-[9px] uppercase tracking-[0.25em] bg-slate-950/60 backdrop-blur-md inline-block px-3 py-0.5 rounded-full border border-white/20 shadow-md">
-              PORTAL DO VOLUNTÁRIO
-            </p>
           </div>
         </div>
       </div>
