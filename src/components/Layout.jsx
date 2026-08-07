@@ -67,22 +67,22 @@ const Layout = ({ children }) => {
       {children}
 
       {/* BottomNavBar */}
-      <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-6 pb-6 pt-2 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[2.5rem] border-t border-gray-100">
+      <nav className="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 sm:px-4 pb-6 pt-2 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-[2.5rem] border-t border-gray-100">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const isRestricted = item.adminOnly && profile?.role !== 'admin';
           
           const Content = (
             <>
-              <div className={`p-2 rounded-full transition-all ${isActive ? 'bg-primary/10' : ''}`}>
+              <div className={`p-1.5 sm:p-2 rounded-full transition-all ${isActive ? 'bg-primary/10' : ''}`}>
                 <span 
-                  className="material-symbols-outlined text-2xl" 
+                  className="material-symbols-outlined text-xl sm:text-2xl" 
                   style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
                 >
                   {isRestricted ? 'lock' : item.icon}
                 </span>
               </div>
-              <span className="font-headline font-semibold text-[11px] mt-1">{item.label}</span>
+              <span className="font-headline font-semibold text-[10px] sm:text-[11px] mt-1 whitespace-nowrap tracking-tight">{item.label}</span>
             </>
           );
 
@@ -91,7 +91,7 @@ const Layout = ({ children }) => {
               <button 
                 key={item.path}
                 onClick={handleRestrictedClick}
-                className="flex flex-col items-center justify-center p-3 text-gray-300 cursor-not-allowed opacity-60"
+                className="flex flex-col items-center justify-center p-1.5 sm:p-3 text-gray-300 cursor-not-allowed opacity-60 flex-1 min-w-0"
               >
                 {Content}
               </button>
@@ -102,7 +102,7 @@ const Layout = ({ children }) => {
             <Link 
               key={item.path}
               to={item.path} 
-              className={`flex flex-col items-center justify-center p-3 transition-all hover:scale-110 ${
+              className={`flex flex-col items-center justify-center p-1.5 sm:p-3 transition-all hover:scale-105 flex-1 min-w-0 ${
                 isActive ? 'text-primary' : 'text-gray-400'
               }`}
             >
