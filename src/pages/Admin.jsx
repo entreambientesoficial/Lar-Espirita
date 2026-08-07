@@ -267,9 +267,8 @@ const Admin = () => {
     const pendingUsers = (preCadData || [])
       .filter(p => !existingEmails.has(p.email?.toLowerCase().trim()))
       .map(p => ({
-        id: `pre_${p.id}`,
+        id: `pre_${p.email}`,
         isPreCadastro: true,
-        preCadastroId: p.id,
         name: p.name,
         email: p.email,
         phone: p.phone,
@@ -331,7 +330,7 @@ const Admin = () => {
 
     const { data: existing } = await supabase
       .from('pre_cadastros')
-      .select('id')
+      .select('email')
       .eq('email', newEmail.toLowerCase().trim())
       .maybeSingle();
 
@@ -356,13 +355,13 @@ const Admin = () => {
     }
   };
 
-  const handleDeletePreCadastro = (preCadastroId, name) => {
+  const handleDeletePreCadastro = (email, name) => {
     setConfirmModal({
       title: 'Excluir Convite Pendente',
       message: `Tem certeza que deseja excluir o convite pendente para ${name}? Esta ação cancelará a autorização de acesso.`,
       onConfirm: async () => {
         setConfirmModal(null);
-        const { error } = await supabase.from('pre_cadastros').delete().eq('id', preCadastroId);
+        const { error } = await supabase.from('pre_cadastros').delete().eq('email', email);
         if (!error) {
           showToast(`Convite de ${name} excluído com sucesso.`, 'success');
           fetchInitialData();
@@ -748,7 +747,7 @@ const Admin = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeletePreCadastro(u.preCadastroId, u.name)}
+                                onClick={() => handleDeletePreCadastro(u.email, u.name)}
                                 className="text-xs font-bold text-red-500 hover:underline"
                               >
                                 Excluir Convite
