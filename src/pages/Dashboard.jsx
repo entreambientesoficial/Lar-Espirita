@@ -12,12 +12,12 @@ const formatPhone = (value) => {
 };
 
 const COURSE_OPTIONS = [
-  "Curso Espiritismo - Nivel Iniciante",
+  "Curso de Apometria",
+  "Curso Espiritismo - Nível Iniciante",
   "Curso Espiritismo - Nível Intermediário",
   "Curso Espiritismo - Nível Avançado",
   "Curso Reiki - Nível I",
   "Curso Reiki - Nível II",
-  "Curso Apometria",
   "Curso Cura"
 ];
 
