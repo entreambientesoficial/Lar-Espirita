@@ -66,11 +66,11 @@ const BemVindo = () => {
       <div className="fixed inset-0 z-1 bg-black/20 backdrop-blur-[0.5px]" />
 
       {/* TOP SECTION: Header positioned below the top golden lotus symbol */}
-      <div className="relative z-10 w-full max-w-md pt-12 sm:pt-16 md:pt-20 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="relative z-10 w-full max-w-md pt-12 sm:pt-16 md:pt-20 text-center">
         <div className="flex flex-col items-center space-y-2">
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 group">
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 group animate-entry-logo">
             {/* Soft Luminous Aura Glow */}
-            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300 opacity-75 blur-md animate-pulse" />
+            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300 opacity-75 blur-md" />
             
             {/* Logo Circle Container */}
             <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white/90 shadow-[0_0_25px_rgba(255,255,255,0.7),0_0_40px_rgba(96,165,250,0.5)] bg-slate-900 flex items-center justify-center">
@@ -83,7 +83,7 @@ const BemVindo = () => {
           </div>
 
           <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-white font-headline tracking-tight leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            <h1 className="text-lg sm:text-xl font-extrabold text-white font-headline tracking-tight leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-entry-title">
               Apometria Elos de Amor e Paz
             </h1>
           </div>
@@ -96,9 +96,9 @@ const BemVindo = () => {
       {/* BOTTOM SECTION: Two side-by-side rectangular buttons at the bottom of the screen */}
       <div className="relative z-10 w-full max-w-md pb-2 sm:pb-4 mt-auto transition-all duration-300">
         {!showEmailForm ? (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-3">
             {/* Two Side-by-Side Compact Rectangular Buttons */}
-            <div className="flex items-center justify-center gap-3 w-full">
+            <div className="flex items-center justify-center gap-3 w-full animate-entry-buttons">
               <button
                 type="button"
                 onClick={signInWithGoogle}
@@ -124,7 +124,7 @@ const BemVindo = () => {
             </div>
 
             {/* Micro Links below buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-1">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-1 animate-entry-links">
               <button 
                 type="button"
                 onClick={() => {
