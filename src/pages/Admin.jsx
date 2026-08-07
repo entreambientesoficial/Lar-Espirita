@@ -377,14 +377,48 @@ const Admin = () => {
     });
   };
 
+  const copyToClipboard = async (text) => {
+    if (!text) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      showToast("Convite copiado com sucesso! Já pode colar no WhatsApp. 📲", "success");
+    } catch (err) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+        showToast("Convite copiado com sucesso! Já pode colar no WhatsApp. 📲", "success");
+      } catch (e) {
+        showToast("Não foi possível copiar automaticamente. Selecione e copie o texto acima.", "error");
+      }
+    }
+  };
+
   const handleResendInvite = (u) => {
     const msg = `Olá ${u.name.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Apometria Elos de Amor e Paz foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${u.email}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
     setInviteMsg(msg);
     copyToClipboard(msg);
   };
-
-  {/* Header Description & Resumo Discreto */}
-  {/* Rest of JSX rendered below */}
 
   const toggleAdmin = async (userId, currentRole) => {
     if (userId === profile?.id) return;
