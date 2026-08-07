@@ -356,15 +356,21 @@ const Admin = () => {
     }
   };
 
-  const handleDeletePreCadastro = async (preCadastroId, name) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o convite pendente para ${name}?`)) return;
-    const { error } = await supabase.from('pre_cadastros').delete().eq('id', preCadastroId);
-    if (!error) {
-      showToast(`Convite de ${name} excluído com sucesso.`, 'success');
-      fetchInitialData();
-    } else {
-      showToast('Erro ao excluir convite: ' + error.message, 'error');
-    }
+  const handleDeletePreCadastro = (preCadastroId, name) => {
+    setConfirmModal({
+      title: 'Excluir Convite Pendente',
+      message: `Tem certeza que deseja excluir o convite pendente para ${name}? Esta ação cancelará a autorização de acesso.`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const { error } = await supabase.from('pre_cadastros').delete().eq('id', preCadastroId);
+        if (!error) {
+          showToast(`Convite de ${name} excluído com sucesso.`, 'success');
+          fetchInitialData();
+        } else {
+          showToast('Erro ao excluir convite: ' + error.message, 'error');
+        }
+      }
+    });
   };
 
   const handleResendInvite = (u) => {
