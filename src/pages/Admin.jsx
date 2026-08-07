@@ -257,8 +257,35 @@ const Admin = () => {
     }
 
     // 2. Buscar Usuários Reais e Pré-cadastros
-    const { data: userData } = await supabase.from('profiles').select('*').order('name', { ascending: true });
-    if (userData) setUsers(userData);
+    const [{ data: userData }, { data: preCadData }] = await Promise.all([
+      supabase.from('profiles').select('*').order('name', { ascending: true }),
+      supabase.from('pre_cadastros').select('*').order('name', { ascending: true })
+    ]);
+
+    const existingEmails = new Set((userData || []).map(u => u.email?.toLowerCase().trim()));
+
+    const pendingUsers = (preCadData || [])
+      .filter(p => !existingEmails.has(p.email?.toLowerCase().trim()))
+      .map(p => ({
+        id: `pre_${p.id}`,
+        isPreCadastro: true,
+        preCadastroId: p.id,
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        role: p.role || 'volunteer',
+        status: 'pending',
+        cursos: 'Convite enviado • Aguardando 1º acesso'
+      }));
+
+    const registeredUsers = (userData || []).map(u => ({
+      ...u,
+      isPreCadastro: false,
+      status: u.active === false ? 'inactive' : 'active'
+    }));
+
+    const combinedUsers = [...registeredUsers, ...pendingUsers].sort((a, b) => a.name.localeCompare(b.name));
+    setUsers(combinedUsers);
     
     // 3. Buscar Reflexão do Dia
     const { data: reflectionData } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
@@ -329,11 +356,25 @@ const Admin = () => {
     }
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    showToast("Convite copiado com sucesso para a área de transferência!", "success");
-    setInviteMsg('');
+  const handleDeletePreCadastro = async (preCadastroId, name) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o convite pendente para ${name}?`)) return;
+    const { error } = await supabase.from('pre_cadastros').delete().eq('id', preCadastroId);
+    if (!error) {
+      showToast(`Convite de ${name} excluído com sucesso.`, 'success');
+      fetchInitialData();
+    } else {
+      showToast('Erro ao excluir convite: ' + error.message, 'error');
+    }
   };
+
+  const handleResendInvite = (u) => {
+    const msg = `Olá ${u.name.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Casa Espírita foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${u.email}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
+    setInviteMsg(msg);
+    copyToClipboard(msg);
+  };
+
+  {/* Header Description & Resumo Discreto */}
+  {/* Rest of JSX rendered below */}
 
   const toggleAdmin = async (userId, currentRole) => {
     if (userId === profile?.id) return;
@@ -466,9 +507,11 @@ const Admin = () => {
             <div className="px-4 py-2 bg-violet-50/80 border border-violet-200/60 rounded-2xl text-xs font-bold text-violet-950 flex items-center gap-2 shrink-0">
               <span>{users.length} cadastrados</span>
               <span className="text-gray-300">•</span>
-              <span className="text-emerald-700">{users.filter(u => u.active !== false).length} ativos</span>
+              <span className="text-emerald-700">{users.filter(u => u.status === 'active').length} ativos</span>
               <span className="text-gray-300">•</span>
-              <span className="text-gray-500">{users.filter(u => u.active === false).length} inativos</span>
+              <span className="text-amber-700">{users.filter(u => u.status === 'pending').length} pendentes</span>
+              <span className="text-gray-300">•</span>
+              <span className="text-gray-500">{users.filter(u => u.status === 'inactive').length} inativos</span>
             </div>
           </div>
 
@@ -533,7 +576,19 @@ const Admin = () => {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Ativos ({users.filter(u => u.active !== false).length})
+                Ativos ({users.filter(u => u.status === 'active').length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserStatusFilter(userStatusFilter === 'pending' ? 'all' : 'pending')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  userStatusFilter === 'pending'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Pendentes ({users.filter(u => u.status === 'pending').length})
               </button>
 
               <button
@@ -545,7 +600,7 @@ const Admin = () => {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Inativos ({users.filter(u => u.active === false).length})
+                Inativos ({users.filter(u => u.status === 'inactive').length})
               </button>
 
               <span className="text-gray-300">|</span>
@@ -614,9 +669,9 @@ const Admin = () => {
               <tbody className="divide-y divide-gray-50">
                 {users
                   .filter(u => {
-                    const isActive = u.active !== false;
-                    if (userStatusFilter === 'active' && !isActive) return false;
-                    if (userStatusFilter === 'inactive' && isActive) return false;
+                    if (userStatusFilter === 'active' && u.status !== 'active') return false;
+                    if (userStatusFilter === 'pending' && u.status !== 'pending') return false;
+                    if (userStatusFilter === 'inactive' && u.status !== 'inactive') return false;
 
                     if (userRoleFilter === 'volunteer' && u.role !== 'volunteer') return false;
                     if (userRoleFilter === 'manager' && u.role !== 'manager') return false;
@@ -633,7 +688,6 @@ const Admin = () => {
                     return true;
                   })
                   .map((u, i) => {
-                    const isActive = u.active !== false;
                     return (
                       <tr key={u.id || i} className="hover:bg-gray-50/20 transition-colors">
                         <td className="px-6 py-6 whitespace-nowrap">
@@ -660,33 +714,64 @@ const Admin = () => {
                           </span>
                         </td>
                         <td className="px-6 py-6 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-full font-extrabold text-xs inline-block ${
-                            isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {isActive ? 'Ativo' : 'Inativo'}
-                          </span>
+                          {u.status === 'active' && (
+                            <span className="px-2.5 py-1 rounded-full font-extrabold text-xs inline-block bg-emerald-100 text-emerald-800">
+                              Ativo
+                            </span>
+                          )}
+                          {u.status === 'pending' && (
+                            <span className="px-2.5 py-1 rounded-full font-extrabold text-xs inline-block bg-amber-100 text-amber-900 border border-amber-200/80">
+                              Pendente
+                            </span>
+                          )}
+                          {u.status === 'inactive' && (
+                            <span className="px-2.5 py-1 rounded-full font-extrabold text-xs inline-block bg-gray-100 text-gray-600">
+                              Inativo
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-6 text-right whitespace-nowrap space-x-3">
-                          {profile?.role === 'admin' && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmActiveModal({ isOpen: true, user: u })}
-                              className={`text-xs font-bold hover:underline ${
-                                isActive ? 'text-gray-500 hover:text-gray-700' : 'text-emerald-700 hover:text-emerald-900'
-                              }`}
-                            >
-                              {isActive ? 'Desativar' : 'Ativar'}
-                            </button>
-                          )}
+                          {u.isPreCadastro ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleResendInvite(u)}
+                                className="text-xs font-bold text-green-600 hover:underline"
+                              >
+                                Reenviar Convite
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePreCadastro(u.preCadastroId, u.name)}
+                                className="text-xs font-bold text-red-500 hover:underline"
+                              >
+                                Excluir Convite
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {profile?.role === 'admin' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmActiveModal({ isOpen: true, user: u })}
+                                  className={`text-xs font-bold hover:underline ${
+                                    u.status === 'active' ? 'text-gray-500 hover:text-gray-700' : 'text-emerald-700 hover:text-emerald-900'
+                                  }`}
+                                >
+                                  {u.status === 'active' ? 'Desativar' : 'Ativar'}
+                                </button>
+                              )}
 
-                          {u.id !== profile?.id && (
-                            <button
-                              type="button"
-                              onClick={() => toggleAdmin(u.id, u.role)}
-                              className="text-xs font-bold text-violet-700 hover:underline"
-                            >
-                              {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-                            </button>
+                              {u.id !== profile?.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAdmin(u.id, u.role)}
+                                  className="text-xs font-bold text-violet-700 hover:underline"
+                                >
+                                  {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                                </button>
+                              )}
+                            </>
                           )}
                         </td>
                       </tr>
