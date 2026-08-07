@@ -97,6 +97,12 @@ const BemVindo = () => {
       <div className="relative z-10 w-full max-w-md pb-6 sm:pb-8 md:pb-10 mt-auto transition-all duration-300">
         {!showEmailForm ? (
           <div className="space-y-3">
+            {authError && (
+              <div className="p-3 rounded-2xl bg-red-500/90 text-white text-xs font-bold text-center border border-red-400/40 shadow-xl backdrop-blur-md animate-in fade-in duration-300">
+                🔒 {authError}
+              </div>
+            )}
+
             {/* Two Side-by-Side Compact Rectangular Buttons */}
             <div className="flex items-center justify-center gap-3 w-full animate-entry-buttons">
               <button
