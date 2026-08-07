@@ -47,13 +47,53 @@ export const AuthProvider = ({ children }) => {
     if (data) {
       setProfile(data);
       setAuthError(null);
-    } else {
-      // Sessão existe mas não há perfil = e-mail não está no pré-cadastro
-      await supabase.auth.signOut();
-      setSession(null);
-      setProfile(null);
-      setAuthError('E-mail não autorizado. Solicite acesso à administração da Casa.');
+      setLoading(false);
+      return;
     }
+
+    // Tentar auto-recuperar perfil se o e-mail estiver em pre_cadastros
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email?.toLowerCase()?.trim();
+
+      if (userEmail) {
+        const { data: preData } = await supabase
+          .from('pre_cadastros')
+          .select('*')
+          .ilike('email', userEmail)
+          .maybeSingle();
+
+        if (preData) {
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .upsert({
+              id: userId,
+              name: preData.name || session.user?.user_metadata?.name || session.user?.user_metadata?.full_name || userEmail.split('@')[0],
+              email: session.user.email,
+              role: preData.role || 'volunteer',
+              phone: preData.phone || null,
+              active: true
+            })
+            .select()
+            .single();
+
+          if (newProfile) {
+            setProfile(newProfile);
+            setAuthError(null);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao auto-recuperar perfil:", err);
+    }
+
+    // Sessão existe mas não há perfil nem pré-cadastro = e-mail não autorizado
+    await supabase.auth.signOut();
+    setSession(null);
+    setProfile(null);
+    setAuthError('E-mail não autorizado. Solicite acesso à administração da Casa.');
     setLoading(false);
   };
 
