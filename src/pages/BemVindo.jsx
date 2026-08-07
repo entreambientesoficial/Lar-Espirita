@@ -58,7 +58,7 @@ const BemVindo = () => {
       <div 
         className="fixed inset-0 z-0 bg-cover md:bg-contain bg-no-repeat bg-center"
         style={{ 
-          backgroundImage: "url('/img-apoio/capa-apometria.jpg')"
+          backgroundImage: "url('/img-apoio/tela-login.jpg')"
         }}
       />
       
