@@ -1,7 +1,7 @@
 {
-  "name": "Portal do Voluntário - Apometria Elos de Amor e Paz",
-  "short_name": "Portal Voluntário",
-  "description": "Portal do Voluntário da Casa Espírita",
+  "name": "Apometria Elos de Amor e Paz",
+  "short_name": "Apometria",
+  "description": "Portal do Voluntário - Apometria Elos de Amor e Paz",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

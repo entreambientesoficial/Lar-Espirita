@@ -66,7 +66,7 @@ const BemVindo = () => {
       <div className="fixed inset-0 z-1 bg-black/20 backdrop-blur-[0.5px]" />
 
       {/* TOP SECTION: Header positioned below the top golden lotus symbol */}
-      <div className="relative z-10 w-full max-w-md pt-12 sm:pt-16 md:pt-20 text-center">
+      <div className="relative z-10 w-full max-w-md pt-6 sm:pt-10 md:pt-12 text-center">
         <div className="flex flex-col items-center space-y-2">
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 group animate-entry-logo">
             {/* Soft Luminous Aura Glow */}
@@ -94,7 +94,7 @@ const BemVindo = () => {
       <div className="flex-1 w-full" />
 
       {/* BOTTOM SECTION: Two side-by-side rectangular buttons at the bottom of the screen */}
-      <div className="relative z-10 w-full max-w-md pb-2 sm:pb-4 mt-auto transition-all duration-300">
+      <div className="relative z-10 w-full max-w-md pb-6 sm:pb-8 md:pb-10 mt-auto transition-all duration-300">
         {!showEmailForm ? (
           <div className="space-y-3">
             {/* Two Side-by-Side Compact Rectangular Buttons */}
