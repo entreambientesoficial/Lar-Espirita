@@ -68,12 +68,12 @@ const BemVindo = () => {
       {/* TOP SECTION: Header positioned below the top golden lotus symbol */}
       <div className="relative z-10 w-full max-w-md pt-12 sm:pt-16 md:pt-20 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="flex flex-col items-center space-y-2">
-          <div className="relative w-16 h-16 sm:w-20 sm:h-20 group">
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 group">
             {/* Soft Luminous Aura Glow */}
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300 opacity-70 blur-md animate-pulse" />
+            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300 opacity-75 blur-md animate-pulse" />
             
             {/* Logo Circle Container */}
-            <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white/90 shadow-[0_0_20px_rgba(255,255,255,0.6)] bg-slate-900 flex items-center justify-center">
+            <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white/90 shadow-[0_0_25px_rgba(255,255,255,0.7),0_0_40px_rgba(96,165,250,0.5)] bg-slate-900 flex items-center justify-center">
               <img 
                 src="/img-apoio/logo-elos.jpg" 
                 alt="Logo Apometria Elos de Amor e Paz" 
@@ -97,15 +97,15 @@ const BemVindo = () => {
       <div className="relative z-10 w-full max-w-md pb-2 sm:pb-4 mt-auto transition-all duration-300">
         {!showEmailForm ? (
           <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Two Side-by-Side Rectangular Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            {/* Two Side-by-Side Compact Rectangular Buttons */}
+            <div className="flex items-center justify-center gap-3 w-full">
               <button
                 type="button"
                 onClick={signInWithGoogle}
-                className="w-full bg-white/95 hover:bg-white text-slate-800 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl border border-white/80 active:scale-[0.98] transition-all text-xs sm:text-sm"
+                className="flex-1 bg-white/95 hover:bg-white text-slate-800 py-3 px-3 sm:px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl border border-white/80 active:scale-[0.98] transition-all text-xs sm:text-sm"
               >
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Entrar com Google</span>
+                <span>Google</span>
               </button>
 
               <button
@@ -116,10 +116,10 @@ const BemVindo = () => {
                   setIsReset(false);
                   setMessage({ text: '', type: '' });
                 }}
-                className="w-full bg-primary/95 hover:bg-primary text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl border border-blue-400/30 backdrop-blur-md active:scale-[0.98] transition-all text-xs sm:text-sm"
+                className="flex-1 bg-primary/95 hover:bg-primary text-white py-3 px-3 sm:px-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xl border border-blue-400/30 backdrop-blur-md active:scale-[0.98] transition-all text-xs sm:text-sm"
               >
                 <span className="material-symbols-outlined text-base sm:text-lg">mail</span>
-                <span>Entrar com e-mail</span>
+                <span>E-mail</span>
               </button>
             </div>
 
