@@ -344,7 +344,7 @@ const Admin = () => {
       .insert([{ name: newName.trim(), email: newEmail.toLowerCase().trim(), phone: newPhone, role: 'volunteer' }]);
 
     if (!error) {
-      const msg = `Olá ${newName.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Casa Espírita foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${newEmail}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
+      const msg = `Olá ${newName.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Apometria Elos de Amor e Paz foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${newEmail}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
       setInviteMsg(msg);
       setNewName('');
       setNewEmail('');
@@ -378,7 +378,7 @@ const Admin = () => {
   };
 
   const handleResendInvite = (u) => {
-    const msg = `Olá ${u.name.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Casa Espírita foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${u.email}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
+    const msg = `Olá ${u.name.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Apometria Elos de Amor e Paz foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${u.email}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
     setInviteMsg(msg);
     copyToClipboard(msg);
   };
