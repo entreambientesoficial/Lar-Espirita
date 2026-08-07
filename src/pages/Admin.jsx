@@ -361,7 +361,12 @@ const Admin = () => {
       message: `Tem certeza que deseja excluir o convite pendente para ${name}? Esta ação cancelará a autorização de acesso.`,
       onConfirm: async () => {
         setConfirmModal(null);
-        const { error } = await supabase.from('pre_cadastros').delete().eq('email', email);
+        const targetEmail = (email || '').toLowerCase().trim();
+        const { error } = await supabase
+          .from('pre_cadastros')
+          .delete()
+          .ilike('email', targetEmail);
+
         if (!error) {
           showToast(`Convite de ${name} excluído com sucesso.`, 'success');
           fetchInitialData();
