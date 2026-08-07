@@ -58,6 +58,7 @@ const Admin = () => {
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [inviteMsg, setInviteMsg] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
 
   // Estados da Reflexão Diária
   const [reflectionQuote, setReflectionQuote] = useState('');
@@ -346,6 +347,7 @@ const Admin = () => {
     if (!error) {
       const msg = `Olá ${newName.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Apometria Elos de Amor e Paz foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${newEmail}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
       setInviteMsg(msg);
+      setInvitePhone(newPhone);
       setNewName('');
       setNewEmail('');
       setNewPhone('');
@@ -417,6 +419,7 @@ const Admin = () => {
   const handleResendInvite = (u) => {
     const msg = `Olá ${u.name.split(' ')[0]}! Seu acesso ao Portal do Voluntário da Apometria Elos de Amor e Paz foi liberado. ✨\n\nLink: ${window.location.origin}\nE-mail: ${u.email}\n\nVocê pode acessar com sua conta Google ou criar uma senha rápida no seu primeiro acesso!`;
     setInviteMsg(msg);
+    setInvitePhone(u.phone || '');
     copyToClipboard(msg);
   };
 
@@ -581,17 +584,48 @@ const Admin = () => {
             </form>
 
             {inviteMsg && (
-              <div className="mt-6 p-6 bg-white rounded-2xl border-2 border-dashed border-violet-200 space-y-4">
-                <p className="text-xs font-bold text-violet-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-green-600">check_circle</span> Convite Gerado:
-                </p>
-                <div className="bg-gray-50 p-4 rounded-xl text-xs font-mono text-gray-600 whitespace-pre-wrap">{inviteMsg}</div>
-                <button 
-                  onClick={() => copyToClipboard(inviteMsg)}
-                  className="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
-                >
-                   <span className="material-symbols-outlined text-sm">content_copy</span> Copiar Convite para WhatsApp
-                </button>
+              <div className="mt-6 p-6 bg-white rounded-2xl border-2 border-dashed border-violet-200 space-y-4 animate-in fade-in duration-300">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs font-bold text-violet-900 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-green-600">check_circle</span> Convite Gerado com Sucesso:
+                  </p>
+                  <button 
+                    type="button" 
+                    onClick={() => { setInviteMsg(''); setInvitePhone(''); }}
+                    className="text-gray-400 hover:text-gray-600 text-xs font-bold transition-colors"
+                  >
+                    ✕ Fechar
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl text-xs font-mono text-gray-700 whitespace-pre-wrap border border-gray-200 select-all">
+                  {inviteMsg}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {invitePhone && (
+                    <a
+                      href={`https://api.whatsapp.com/send?phone=55${invitePhone.replace(/\D/g, '')}&text=${encodeURIComponent(inviteMsg)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/20 text-xs"
+                    >
+                      <span className="material-symbols-outlined text-base">chat</span> Abrir Directo no WhatsApp
+                    </a>
+                  )}
+
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      copyToClipboard(inviteMsg);
+                    }}
+                    className="flex-1 py-3 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-violet-600/20 text-xs"
+                  >
+                    <span className="material-symbols-outlined text-base">content_copy</span> Copiar Texto do Convite
+                  </button>
+                </div>
               </div>
             )}
           </div>
