@@ -86,7 +86,7 @@ $$;
 
 ---
 *Status atualizado por: Inteligência Artificial (Antigravity).*
-*Fase atual: **V 1.9 — Módulo Fila de Atendimento refinado com agrupamento por Data e Sala (1, 2 e 3), dashboard de indicadores rápidos, menus dropdown de ações, modais transacionais de reagendamento/exclusão e gestão de Médiuns e Gestores com status Ativo/Inativo**.*
+*Fase atual: **V 1.9.5 — Tela de Login refinada com Dark Glassmorphism, animação discreta em cascata, botões compactos lado a lado, alerta de e-mail não autorizado, PWA padronizado ("Apometria" / icon.png), fix na barra de navegação e adição do "Curso de Apometria" no perfil do voluntário**.*
 
 ## 3. Fluxo de Presença (IMPORTANTE)
 
@@ -101,9 +101,9 @@ O fluxo correto é em **dois passos**:
 ## 4. Páginas e Funcionalidades
 
 ### Acesso Geral (Voluntários)
-*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Título atualizado para "Apometria Elos de Amor e Paz". Logo centralizada (`logo-elos.jpg`) expandida de borda a borda com moldura de vidro fina de 2px e aura luminosa dupla em degradê pulsante. Fundo responsivo com a imagem espiritual `capa-apometria.jpg` em `bg-contain bg-center`. Textos e links auxiliares com micro-pílulas translúcidas escuras (`bg-slate-950/80 backdrop-blur-md`). Botão Google funcional.
-*   **`Layout.jsx`**: Navbar inferior flutuante. Esconde abas de Admin para `role = volunteer`.
-*   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (cursos/telefone) no primeiro acesso. Banner de instalação PWA (Android/Chrome).
+*   **`BemVindo.jsx`**: Tela de Login via Google OAuth + e-mail/senha (restrito a e-mails em `pre_cadastros`). Título "Apometria Elos de Amor e Paz". Logo circular institucional (`logo-elos.jpg`) com aura luminosa posicionada perfeitamente abaixo da flor de lótus superior. Fundo responsivo com a imagem espiritual `tela-login.jpg` sem sobreposição de cards sólidos. Dois botões compactos retangulares dispostos **lado a lado** na base: `[ G ] Google` e `[ ✉ ] E-mail`. Links de *"Primeiro acesso? Crie sua senha"* e *"Esqueci minha senha"* posicionados na base. Expansão dinâmica em painel *Dark Glassmorphism* translúcido (`bg-slate-950/80 backdrop-blur-xl`) ao clicar em e-mail, mantendo o fundo visível e fornecendo o botão *"← Voltar"*. Animação de entrada discreta em cascata (< 600ms total, com suporte a `prefers-reduced-motion: reduce`). Alerta de erro de autenticação em destaque na tela inicial (`🔒 E-mail não autorizado. Solicite acesso à administração da Casa.`). Layout com elevação de base (`pb-6 sm:pb-8`), garantindo exibição total no mobile sem necessidade de scroll.
+*   **`Layout.jsx`**: Navbar inferior flutuante com regra `whitespace-nowrap` e ajuste fino de espaçamento nos itens para evitar quebra de linha em textos com hífen como *"Check-in"*. Esconde abas de Admin para `role = volunteer`.
+*   **`Dashboard.jsx` (Início)**: Exibe a atividade confirmada do voluntário para hoje (vazio se não confirmou). Reflexão do Dia dinâmica. Botão "Cancelar Presença" em vermelho (some após QR check-in). Onboarding de perfil (incluindo o **"Curso de Apometria"** e telefone) no primeiro acesso. Banner de instalação PWA (Android/Chrome).
 *   **`Agenda.jsx`**: Agenda semanal (Seg–Sáb). Para o dia atual: botão "Confirmar Presença" funcional (insere em `presencas`) ou "Confirmado ✓ + Cancelar". Para outros dias: aviso "Confirmação disponível no dia".
 *   **`Checkin.jsx`**: Scanner de QR Code. Valida o token `LBEB-PRESENCA-2026`. Se já confirmou pela Agenda, apenas marca `qr_checkin = true`. Se não confirmou, insere novo registro com `qr_checkin = true`. QR Code inválido exibe erro.
 *   **`Messages.jsx` (Mural)**: Chat em tempo real via Supabase Realtime. Admins podem enviar "Comunicados Oficiais" (broadcast).
@@ -119,9 +119,9 @@ O fluxo correto é em **dois passos**:
 
 O app é instalável como PWA em dispositivos móveis.
 
-*   **`public/manifest.json`**: Manifesto configurado com o nome "Portal do Voluntário - Apometria Elos de Amor e Paz", ícones `logo-elos.jpg`, `display: standalone`, `theme_color: #1a237e`.
+*   **`public/manifest.json`**: Manifesto configurado com o nome "Apometria Elos de Amor e Paz", nome curto `short_name: "Apometria"`, ícone oficial `/img-apoio/icon.png` (proveniente de `img-apoio/Icon.png`), `display: standalone`, `theme_color: #1a237e`.
 *   **`public/sw.js`**: Service Worker — habilita instalação PWA.
-*   **`index.html`**: Título "Portal do Voluntário - Apometria Elos de Amor e Paz", favicon e ícone Apple apontando para `/img-apoio/logo-elos.jpg`.
+*   **`index.html`**: Título "Portal do Voluntário - Apometria Elos de Amor e Paz", favicon e ícone Apple apontando para `/img-apoio/icon.png`, meta `apple-mobile-web-app-title` com o valor `"Apometria"`.
 *   **`src/main.jsx`**: Registra o service worker apenas em produção (`import.meta.env.PROD`). Em modo dev (`localhost`), desregistra ativamente qualquer ServiceWorker antigo para evitar cache estático indesejado.
 *   **Banner de instalação (Dashboard)**: Captura o evento `beforeinstallprompt` e exibe banner com botão "Instalar" ao usuário. Funciona em Android (Chrome/Edge). No iOS (Safari) o usuário deve usar "Compartilhar → Adicionar à Tela de Início" manualmente.
 
