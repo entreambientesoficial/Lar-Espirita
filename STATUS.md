@@ -212,12 +212,14 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 - **Tradução Visual de Níveis de Acesso**:
   - Mapeamento centralizado de exibição `ROLE_LABELS`: `volunteer` → **Médium**, `admin` → **Administrador**, `manager` → **Gestor**, `lanchonete` → **Lanchonete**.
   - Mantidos os valores internos em inglês no banco de dados Supabase e em regras de RLS/autenticação.
-- **Status Operacional Ativo / Inativo**:
-  - Adicionada a coluna `active BOOLEAN NOT NULL DEFAULT true` na tabela `public.profiles` (`migration_profiles_active.sql`).
-  - Permite indicar quais voluntários estão atualmente em atividade operacional na Casa Espírita sem apagar o cadastro ou bloquear seu login/acesso ao aplicativo.
-  - Resumo no topo da aba: `50 cadastrados • 20 ativos • 30 inativos`.
-  - Filtros rápidos por status (*Todos*, *Ativos*, *Inativos*) e por nível de acesso (*Médiuns*, *Gestores*, *Administradores*).
-  - Modal interno de confirmação para alteração do status operacional restrito a administradores.
+- **Gestão Integrada de Convites e Status (Pendente / Ativo / Inativo)**:
+  - Exibição de **convites pendentes** (`pre_cadastros`) diretamente na lista de Médiuns e Gestores com a badge de status **`Pendente`** (amarelo).
+  - Permite aos Administradores visualizar todos os voluntários convidados que ainda não realizaram o 1º acesso ao aplicativo.
+  - Ações para convites pendentes: **`Reenviar Convite`** (copia mensagem de WhatsApp com link) e **`Excluir Convite`** (remove da lista).
+  - Transição automática: quando o médium realiza o 1º acesso e conclui o perfil, o status passa automaticamente de **`Pendente` → `Ativo`**.
+  - Status operacional **`Ativo`** (verde) e **`Inativo`** (cinza) com controle por modal para administradores.
+  - Resumo de contagens no topo da aba: `X cadastrados • Y ativos • Z pendentes • W inativos`.
+  - Filtros rápidos por status (*Todos*, *Ativos*, *Pendentes*, *Inativos*) e por nível de acesso (*Médiuns*, *Gestores*, *Administradores*).
 
 ## 11. Decisões de Arquitetura e Projeto
 
