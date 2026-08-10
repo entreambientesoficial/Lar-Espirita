@@ -92,14 +92,13 @@ export const dataService = {
     }
   },
 
-  // Buscar atividade confirmada pelo voluntário hoje ou próxima escala confirmada
+  // Buscar atividade confirmada pelo voluntário HOJE (via confirmação na Agenda)
   getTodayActivity: async (userId) => {
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
     const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-    // 1. Tentar confirmação para HOJE
-    const { data: todayData } = await supabase
+    const { data } = await supabase
       .from('presencas')
       .select('id, qr_checkin, checkin_time, atividades(*)')
       .eq('user_id', userId)
@@ -108,44 +107,47 @@ export const dataService = {
       .limit(1)
       .maybeSingle();
 
-    if (todayData && todayData.atividades) {
+    if (data && data.atividades) {
       return { 
-        presenca_id: todayData.id, 
-        qr_checkin: todayData.qr_checkin, 
-        isToday: true, 
-        checkin_time: todayData.checkin_time,
-        ...todayData.atividades 
+        presenca_id: data.id, 
+        qr_checkin: data.qr_checkin, 
+        checkin_time: data.checkin_time,
+        ...data.atividades 
       };
     }
+    return null;
+  },
 
-    // 2. Se não houver confirmação hoje, buscar a próxima confirmação futura
-    const { data: futureData } = await supabase
+  // Buscar próxima confirmação futura (quando não houver trabalho hoje)
+  getNextConfirmedActivity: async (userId) => {
+    const today = new Date();
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+
+    const { data } = await supabase
       .from('presencas')
       .select('id, qr_checkin, checkin_time, atividades(*)')
       .eq('user_id', userId)
-      .gte('checkin_time', startOfDay)
+      .gte('checkin_time', endOfDay)
       .order('checkin_time', { ascending: true })
       .limit(1)
       .maybeSingle();
 
-    if (futureData && futureData.atividades) {
+    if (data && data.atividades) {
       let dateLabel = '';
-      if (futureData.checkin_time) {
-        const d = new Date(futureData.checkin_time);
+      if (data.checkin_time) {
+        const d = new Date(data.checkin_time);
         const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long' });
         const dayMonth = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
         dateLabel = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${dayMonth}`;
       }
       return { 
-        presenca_id: futureData.id, 
-        qr_checkin: futureData.qr_checkin, 
-        isToday: false, 
+        presenca_id: data.id, 
+        qr_checkin: data.qr_checkin, 
         dateLabel,
-        checkin_time: futureData.checkin_time,
-        ...futureData.atividades 
+        checkin_time: data.checkin_time,
+        ...data.atividades 
       };
     }
-
     return null;
   },
 

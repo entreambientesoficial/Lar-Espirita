@@ -24,7 +24,8 @@ const COURSE_OPTIONS = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [activity, setActivity] = useState(null);  // inclui presenca_id se confirmado
+  const [activity, setActivity] = useState(null);        // Atividade de HOJE
+  const [nextActivity, setNextActivity] = useState(null); // Próxima atividade futura confirmada
   const [loading, setLoading] = useState(true);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -70,9 +71,17 @@ const Dashboard = () => {
         setUserPhone(profile.phone || '');
       }
 
-      // getTodayActivity agora retorna null se não houver confirmação na Agenda
-      const data = await dataService.getTodayActivity(profile.id);
-      setActivity(data);
+      // 1. Carregar escala de HOJE
+      const todayData = await dataService.getTodayActivity(profile.id);
+      setActivity(todayData);
+
+      // 2. Se não houver escala hoje, carregar próxima confirmação futura
+      if (!todayData) {
+        const nextData = await dataService.getNextConfirmedActivity(profile.id);
+        setNextActivity(nextData);
+      } else {
+        setNextActivity(null);
+      }
       setLoading(false);
 
       // Carregar reflexão do dia
@@ -279,14 +288,10 @@ const Dashboard = () => {
         </button>
       </section>
 
-      {/* Main Feature: Today's / Next Assignment */}
+      {/* Main Feature: Today's Assignment */}
       <section className="space-y-4">
         <div className="flex justify-between items-center px-1">
-          <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">
-            {!loading && activity && activity.isToday === false
-              ? `Seu Próximo Trabalho (${activity.dateLabel})`
-              : 'Seu Trabalho Hoje'}
-          </h3>
+          <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">Seu Trabalho Hoje</h3>
           {!loading && activity && (
             <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase">
               Confirmado
@@ -319,20 +324,13 @@ const Dashboard = () => {
                 <span className="text-primary font-black text-lg tracking-tight">
                   {activity.start_time && activity.end_time ? `${activity.start_time.slice(0, 5)} - ${activity.end_time.slice(0, 5)}` : (activity.time_range ? activity.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '')}
                 </span>
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                  {activity.isToday === false ? `Confirmado para ${activity.dateLabel}` : 'Presença Confirmada'}
-                </span>
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Presença Confirmada</span>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {activity.qr_checkin ? (
                   <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm">
                     <span className="material-symbols-outlined text-base">verified</span>
                     Check-in Realizado
-                  </span>
-                ) : activity.isToday === false ? (
-                  <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200/60 px-3 py-2 rounded-xl flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">schedule</span>
-                    Check-in disponível no dia
                   </span>
                 ) : (
                   <button
@@ -355,12 +353,41 @@ const Dashboard = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-3xl p-12 flex flex-col items-center text-center space-y-4 animate-in fade-in duration-1000">
-            <span className="material-symbols-outlined text-4xl text-gray-300">event_busy</span>
-            <div>
-              <p className="text-gray-500 font-bold text-sm">Sem escala para hoje</p>
-              <p className="text-gray-400 text-xs mt-1">Aproveite o dia para reflexão e descanso.</p>
+          <div className="space-y-3">
+            <div className="bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-3xl p-10 flex flex-col items-center text-center space-y-3 animate-in fade-in duration-1000">
+              <span className="material-symbols-outlined text-4xl text-gray-300">event_busy</span>
+              <div>
+                <p className="text-gray-500 font-bold text-sm">Sem escala para hoje</p>
+                <p className="text-gray-400 text-xs mt-1">Aproveite o dia para reflexão e descanso.</p>
+              </div>
             </div>
+
+            {/* Banner discreto com a próxima confirmação futura */}
+            {nextActivity && (
+              <div 
+                onClick={() => navigate('/agenda')}
+                className="cursor-pointer bg-teal-50/80 border border-teal-200/80 rounded-2xl p-4 flex items-center justify-between text-teal-900 transition-all hover:bg-teal-100/60 shadow-sm animate-in slide-in-from-bottom-2 duration-700"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-teal-700 text-white rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                    <span className="material-symbols-outlined text-lg">event_available</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-extrabold text-teal-950 leading-tight flex items-center gap-1">
+                      <span>Próxima presença confirmada:</span>
+                      <span className="text-teal-700 font-black">{nextActivity.dateLabel}</span>
+                    </p>
+                    <p className="text-[11px] text-teal-800 font-medium">
+                      {nextActivity.name} ({nextActivity.start_time ? nextActivity.start_time.slice(0, 5) : (nextActivity.time_range || '')})
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center text-xs font-black uppercase tracking-wider text-teal-800 shrink-0">
+                  Agenda
+                  <span className="material-symbols-outlined text-base">chevron_right</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
