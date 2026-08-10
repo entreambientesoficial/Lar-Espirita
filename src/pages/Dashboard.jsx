@@ -85,19 +85,25 @@ const Dashboard = () => {
       setLoading(false);
 
       // Carregar reflexão do dia
+      const defaultReflection = {
+        id: 1,
+        quote: "O mundo exterior é o espelho exato do seu estado de espírito. Quando você desacelera e limpa as energias densas, a sua verdadeira Natureza Divina — que é saudável, pacífica e intocável — se manifesta. Você não é o cansaço que sente hoje; você é a luz que habita atrás dele. Sintonize-se com a harmonia e desfaça os nós do passado.",
+        author: "Lauro Michielin - Espírito Luigi Santi Campo",
+        image_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+      };
+
       try {
         setLoadingReflection(true);
         setReflectionError(false);
-        const { data: refData, error: refErr } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).single();
-        if (refErr) throw refErr;
-        if (refData) {
-          setReflection(refData);
+        const { data: refData, error: refErr } = await supabase.from('reflexao_diaria').select('*').eq('id', 1).maybeSingle();
+        if (refErr || !refData) {
+          setReflection(defaultReflection);
         } else {
-          setReflectionError(true);
+          setReflection(refData);
         }
       } catch (err) {
         console.error("Erro ao carregar a reflexão do dia:", err);
-        setReflectionError(true);
+        setReflection(defaultReflection);
       } finally {
         setLoadingReflection(false);
       }
