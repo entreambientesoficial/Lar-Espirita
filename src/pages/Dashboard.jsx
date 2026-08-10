@@ -279,10 +279,14 @@ const Dashboard = () => {
         </button>
       </section>
 
-      {/* Main Feature: Today's Assignment */}
+      {/* Main Feature: Today's / Next Assignment */}
       <section className="space-y-4">
         <div className="flex justify-between items-center px-1">
-          <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">Seu Trabalho Hoje</h3>
+          <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-primary/40">
+            {!loading && activity && activity.isToday === false
+              ? `Seu Próximo Trabalho (${activity.dateLabel})`
+              : 'Seu Trabalho Hoje'}
+          </h3>
           {!loading && activity && (
             <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase">
               Confirmado
@@ -315,13 +319,20 @@ const Dashboard = () => {
                 <span className="text-primary font-black text-lg tracking-tight">
                   {activity.start_time && activity.end_time ? `${activity.start_time.slice(0, 5)} - ${activity.end_time.slice(0, 5)}` : (activity.time_range ? activity.time_range.replace(/\s+às\s+/g, ' - ').replace(/\s+–\s+/g, ' - ') : '')}
                 </span>
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Presença Confirmada</span>
+                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                  {activity.isToday === false ? `Confirmado para ${activity.dateLabel}` : 'Presença Confirmada'}
+                </span>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {activity.qr_checkin ? (
                   <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm">
                     <span className="material-symbols-outlined text-base">verified</span>
                     Check-in Realizado
+                  </span>
+                ) : activity.isToday === false ? (
+                  <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200/60 px-3 py-2 rounded-xl flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    Check-in disponível no dia
                   </span>
                 ) : (
                   <button

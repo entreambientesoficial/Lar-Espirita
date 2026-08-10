@@ -92,22 +92,61 @@ export const dataService = {
     }
   },
 
-  // Buscar atividade confirmada pelo voluntário hoje (via confirmação na Agenda)
+  // Buscar atividade confirmada pelo voluntário hoje ou próxima escala confirmada
   getTodayActivity: async (userId) => {
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
     const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
-    const { data } = await supabase
+
+    // 1. Tentar confirmação para HOJE
+    const { data: todayData } = await supabase
       .from('presencas')
-      .select('id, qr_checkin, atividades(*)')
+      .select('id, qr_checkin, checkin_time, atividades(*)')
       .eq('user_id', userId)
       .gte('checkin_time', startOfDay)
       .lt('checkin_time', endOfDay)
       .limit(1)
       .maybeSingle();
-    if (!data) return null;
-    // Retorna dados da atividade + presenca_id e qr_checkin para controle de UI
-    return { presenca_id: data.id, qr_checkin: data.qr_checkin, ...data.atividades };
+
+    if (todayData && todayData.atividades) {
+      return { 
+        presenca_id: todayData.id, 
+        qr_checkin: todayData.qr_checkin, 
+        isToday: true, 
+        checkin_time: todayData.checkin_time,
+        ...todayData.atividades 
+      };
+    }
+
+    // 2. Se não houver confirmação hoje, buscar a próxima confirmação futura
+    const { data: futureData } = await supabase
+      .from('presencas')
+      .select('id, qr_checkin, checkin_time, atividades(*)')
+      .eq('user_id', userId)
+      .gte('checkin_time', startOfDay)
+      .order('checkin_time', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (futureData && futureData.atividades) {
+      let dateLabel = '';
+      if (futureData.checkin_time) {
+        const d = new Date(futureData.checkin_time);
+        const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+        const dayMonth = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        dateLabel = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${dayMonth}`;
+      }
+      return { 
+        presenca_id: futureData.id, 
+        qr_checkin: futureData.qr_checkin, 
+        isToday: false, 
+        dateLabel,
+        checkin_time: futureData.checkin_time,
+        ...futureData.atividades 
+      };
+    }
+
+    return null;
   },
 
   // Buscar configurações de geolocalização e raio da Casa
