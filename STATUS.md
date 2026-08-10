@@ -307,7 +307,19 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
    - Sem rastreamento contínuo em segundo plano e sem histórico de movimentação do voluntário.
    - Apenas a distância calculada e a precisão do GPS no momento do toque em "Fazer Check-in" são salvas junto à presença (`checkin_method`, `checkin_distance_meters`, `checkin_accuracy_meters`).
 
-7. **Migration Criada**:
-   - `migration_checkin_geolocation.sql` (100% Idempotente para execução manual no Supabase SQL Editor).
+7. **Migration Criada e Executada com Sucesso**:
+   - `migration_checkin_geolocation.sql` (100% Idempotente).
+   - Executada com sucesso no Supabase SQL Editor em 10/08/2026 (`Success. No rows returned`).
+
+### Detalhamento das Melhorias de Segurança Final (V2.2):
+- **Isolação de Segredos (`casa_checkin_secret`)**: O token oficial do QR Code foi separado da tabela pública `casa_config` e armazenado na tabela protegida `casa_checkin_secret`.
+- **RLS Restrito**: A tabela `casa_checkin_secret` possui RLS ativado sem permissão de `SELECT` para usuários comuns (`authenticated`). Apenas administradores (`is_admin()`) têm acesso direto via API. Voluntários não conseguem ler o token via PostgREST.
+- **Validação Interna de QR Token na RPC**: Quando `p_method = 'qrcode'`, a função `SECURITY DEFINER` `realizar_checkin` lê o token da tabela `casa_checkin_secret` internamente e valida contra `p_qr_token`. Chamadas sem o token correto são rejeitadas server-side.
+- **Validação de Limites de Coordenadas**: A RPC valida se `p_lat` está entre `-90.0` e `90.0` e `p_lng` entre `-180.0` e `180.0`.
+- **Fuso Horário Isolado**: Variável `v_now_local TIMESTAMP WITHOUT TIME ZONE` baseada em `NOW() AT TIME ZONE 'America/Sao_Paulo'`.
+- **Lock de Concorrência**: Seleção do registro prévio em `presencas` com `FOR UPDATE` em transação atômica.
+- **Permissões Explícitas**: `REVOKE ALL ON FUNCTION ... FROM PUBLIC;` e `GRANT EXECUTE TO authenticated;`.
+- **Schema Reload**: Comando `NOTIFY pgrst, 'reload schema';` incluído e executado.
+
 
 
