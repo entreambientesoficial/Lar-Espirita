@@ -15,7 +15,12 @@ CREATE TABLE IF NOT EXISTS public.reflexao_diaria (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Inserir ou atualizar o registro de id = 1
+-- 2. Garantir colunas opcionais se a tabela já existia previamente
+ALTER TABLE public.reflexao_diaria ADD COLUMN IF NOT EXISTS author TEXT NULL;
+ALTER TABLE public.reflexao_diaria ADD COLUMN IF NOT EXISTS image_url TEXT NULL;
+ALTER TABLE public.reflexao_diaria ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+-- 3. Inserir ou atualizar o registro de id = 1
 INSERT INTO public.reflexao_diaria (id, quote, author, image_url)
 VALUES (
   1,
@@ -28,5 +33,7 @@ SET quote = EXCLUDED.quote,
     author = EXCLUDED.author,
     image_url = EXCLUDED.image_url,
     updated_at = now();
+
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;
