@@ -1,38 +1,49 @@
 -- ============================================================
--- Migration Idempotente: Check-in por Geolocalização & RPC (V2.1)
+-- Migration Idempotente: Check-in por Geolocalização & RPC (V2.2)
 -- Projeto: Portal do Voluntário - Apometria Elos de Amor e Paz
 -- ============================================================
 
 BEGIN;
 
--- 1. Tabela de Configurações da Casa (Localização GPS, Raio e Token QR)
+-- 1. Tabela de Configurações Públicas da Casa (Localização GPS e Raio)
 CREATE TABLE IF NOT EXISTS public.casa_config (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   latitude DOUBLE PRECISION NULL,
   longitude DOUBLE PRECISION NULL,
   raio_metros INTEGER NOT NULL DEFAULT 100 CHECK (raio_metros > 0),
   janela_checkin_minutos INTEGER NOT NULL DEFAULT 30 CHECK (janela_checkin_minutos >= 0),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by UUID REFERENCES public.profiles(id)
+);
+
+-- Inserção idempotente do registro inicial com id = 1
+INSERT INTO public.casa_config (id, latitude, longitude, raio_metros, janela_checkin_minutos)
+VALUES (1, NULL, NULL, 100, 30)
+ON CONFLICT (id) DO NOTHING;
+
+-- Remover qr_token de casa_config caso tenha sido adicionada anteriormente (para não expor nada na tabela pública)
+ALTER TABLE public.casa_config DROP COLUMN IF EXISTS qr_token;
+
+-- 2. Tabela Separada e Protegida para Segredos de Check-in (Token QR Code)
+CREATE TABLE IF NOT EXISTS public.casa_checkin_secret (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   qr_token TEXT NOT NULL DEFAULT 'LBEB-PRESENCA-2026',
   updated_at TIMESTAMPTZ DEFAULT now(),
   updated_by UUID REFERENCES public.profiles(id)
 );
 
--- Garantir coluna qr_token se a tabela já existia
-ALTER TABLE public.casa_config
-ADD COLUMN IF NOT EXISTS qr_token TEXT NOT NULL DEFAULT 'LBEB-PRESENCA-2026';
-
--- Inserção idempotente do registro inicial com id = 1
-INSERT INTO public.casa_config (id, latitude, longitude, raio_metros, janela_checkin_minutos, qr_token)
-VALUES (1, NULL, NULL, 100, 30, 'LBEB-PRESENCA-2026')
+-- Inserção idempotente do token secreto inicial
+INSERT INTO public.casa_checkin_secret (id, qr_token)
+VALUES (1, 'LBEB-PRESENCA-2026')
 ON CONFLICT (id) DO NOTHING;
 
--- 2. Novas colunas na tabela presencas
+-- 3. Novas colunas na tabela presencas
 ALTER TABLE public.presencas
 ADD COLUMN IF NOT EXISTS checkin_method TEXT NULL,
 ADD COLUMN IF NOT EXISTS checkin_distance_meters NUMERIC NULL,
 ADD COLUMN IF NOT EXISTS checkin_accuracy_meters NUMERIC NULL;
 
--- 3. RLS para casa_config
+-- 4. RLS para casa_config (Leitura liberada para autenticados, alteração apenas admin)
 ALTER TABLE public.casa_config ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
@@ -52,11 +63,27 @@ CREATE POLICY "casa_config_update_policy" ON public.casa_config
 CREATE POLICY "casa_config_insert_policy" ON public.casa_config
   FOR INSERT TO authenticated WITH CHECK (public.is_admin());
 
--- 4. Remoção de assinaturas legadas da RPC
+-- 5. RLS para casa_checkin_secret (RESTRITO 100% A ADMINISTRADORES - Sem SELECT para voluntários)
+ALTER TABLE public.casa_checkin_secret ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+DECLARE r RECORD;
+BEGIN
+  FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'casa_checkin_secret' AND schemaname = 'public') LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.casa_checkin_secret', r.policyname);
+  END LOOP;
+END $$;
+
+CREATE POLICY "casa_checkin_secret_admin_policy" ON public.casa_checkin_secret
+  FOR ALL TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- 6. Remoção de assinaturas legadas da RPC
 DROP FUNCTION IF EXISTS public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC);
 DROP FUNCTION IF EXISTS public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT);
 
--- 5. Função RPC Transacional de Check-in (Geolocalização / QR Code Fallback)
+-- 7. Função RPC Transacional de Check-in (Geolocalização / QR Code Fallback)
 CREATE OR REPLACE FUNCTION public.realizar_checkin(
   p_atividade_id UUID,
   p_method TEXT,
@@ -145,7 +172,7 @@ BEGIN
     );
   END IF;
 
-  -- 5. Buscar configurações da Casa
+  -- 5. Buscar configurações públicas da Casa (Latitude, Longitude, Raio, Janela)
   SELECT * INTO v_config FROM public.casa_config WHERE id = 1;
 
   -- 6. Validar janela de horário (30 min antes até 30 min depois do start_time)
@@ -186,6 +213,11 @@ BEGIN
       RETURN jsonb_build_object('success', false, 'message', 'Coordenadas GPS não recebidas do dispositivo.');
     END IF;
 
+    -- Validar Limites Geográficos: Latitude (-90 a 90) e Longitude (-180 a 180)
+    IF p_lat < -90.0 OR p_lat > 90.0 OR p_lng < -180.0 OR p_lng > 180.0 THEN
+      RETURN jsonb_build_object('success', false, 'message', 'Coordenadas de geolocalização inválidas recebidas do dispositivo.');
+    END IF;
+
     -- Cálculo Haversine em metros
     v_dlat := radians(v_config.latitude - p_lat);
     v_dlng := radians(v_config.longitude - p_lng);
@@ -205,7 +237,13 @@ BEGIN
 
   ELSIF p_method = 'qrcode' THEN
     v_distance_meters := NULL;
-    v_official_token := COALESCE(v_config.qr_token, 'LBEB-PRESENCA-2026');
+
+    -- Buscar o token secreto na tabela protegida casa_checkin_secret (acesso interno via SECURITY DEFINER)
+    SELECT qr_token INTO v_official_token
+    FROM public.casa_checkin_secret
+    WHERE id = 1;
+
+    v_official_token := COALESCE(v_official_token, 'LBEB-PRESENCA-2026');
 
     IF p_qr_token IS NULL OR p_qr_token <> v_official_token THEN
       RETURN jsonb_build_object('success', false, 'message', 'Token de QR Code inválido ou não fornecido.');
@@ -233,11 +271,11 @@ BEGIN
 END;
 $$;
 
--- 6. Permissões explícitas da RPC
+-- 8. Permissões explícitas da RPC
 REVOKE ALL ON FUNCTION public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT) TO authenticated;
 
--- 7. Notificar PostgREST para recarregar o schema
+-- 9. Notificar PostgREST para recarregar o schema
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;
