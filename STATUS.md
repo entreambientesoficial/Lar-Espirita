@@ -320,6 +320,8 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 - **Lock de Concorrência**: Seleção do registro prévio em `presencas` com `FOR UPDATE` em transação atômica.
 - **Permissões Explícitas**: `REVOKE ALL ON FUNCTION ... FROM PUBLIC;` e `GRANT EXECUTE TO authenticated;`.
 - **Schema Reload**: Comando `NOTIFY pgrst, 'reload schema';` incluído e executado.
+- **Correção da Agenda Semanal (`Agenda.jsx`)**: Corrigida a trava que restringia o botão "Confirmar Presença" unicamente ao dia atual. Agora os voluntários conseguem navegar entre os dias da semana (ex: Terça 11/08), visualizar as sessões e clicar em "Confirmar Presença", gravando o registro vinculado à data selecionada para que possam realizar o check-in normalmente no dia do trabalho.
+
 
 
 

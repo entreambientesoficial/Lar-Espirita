@@ -7,11 +7,9 @@ const Agenda = () => {
   const [activities, setActivities]     = useState([]);
   const [selectedDay, setSelectedDay]   = useState(new Date().getDay() || 1);
   const [loading, setLoading]           = useState(true);
-  // { [atividade_id]: presenca_id } — confirmações do usuário para hoje
+  // { [atividade_id]: presenca_id } — confirmações do usuário para o dia selecionado
   const [confirmacoes, setConfirmacoes] = useState({});
   const [confirming, setConfirming]     = useState(null); // id da atividade em processamento
-
-  const todayDayOfWeek = new Date().getDay();
 
   const days = [
     { id: 1, label: 'Segunda', short: 'Seg' },
@@ -23,61 +21,13 @@ const Agenda = () => {
     { id: 0, label: 'Domingo', short: 'Dom' },
   ];
 
-  // Carrega todas as atividades da semana
+  // Carrega todas as atividades ativas da semana
   useEffect(() => {
     dataService.getAgenda().then(data => {
       setActivities(data);
       setLoading(false);
     });
   }, []);
-
-  // Carrega as confirmações do usuário para hoje
-  useEffect(() => {
-    if (!profile) return;
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-    const endOfDay   = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
-    supabase
-      .from('presencas')
-      .select('id, atividade_id')
-      .eq('user_id', profile.id)
-      .gte('checkin_time', startOfDay)
-      .lt('checkin_time', endOfDay)
-      .then(({ data }) => {
-        if (data) {
-          const map = {};
-          data.forEach(p => { map[p.atividade_id] = p.id; });
-          setConfirmacoes(map);
-        }
-      });
-  }, [profile]);
-
-  const handleConfirmar = async (atividadeId) => {
-    if (!profile || confirming) return;
-    setConfirming(atividadeId);
-    const { data, error } = await supabase
-      .from('presencas')
-      .insert([{ user_id: profile.id, atividade_id: atividadeId }])
-      .select('id')
-      .single();
-    if (!error && data) {
-      setConfirmacoes(prev => ({ ...prev, [atividadeId]: data.id }));
-    }
-    setConfirming(null);
-  };
-
-  const handleCancelar = async (atividadeId) => {
-    const presencaId = confirmacoes[atividadeId];
-    if (!presencaId) return;
-    const { error } = await supabase.from('presencas').delete().eq('id', presencaId);
-    if (!error) {
-      setConfirmacoes(prev => {
-        const next = { ...prev };
-        delete next[atividadeId];
-        return next;
-      });
-    }
-  };
 
   const getDayDate = (dayIndex) => {
     const today = new Date();
@@ -96,8 +46,75 @@ const Agenda = () => {
     };
   };
 
-  const selectedDayInfo    = getDayDate(selectedDay);
-  const isToday            = selectedDay === todayDayOfWeek;
+  const selectedDayInfo = getDayDate(selectedDay);
+
+  // Carrega as confirmações do usuário para a data selecionada
+  useEffect(() => {
+    if (!profile || !selectedDayInfo?.fullDateStr) return;
+    const dateStr = selectedDayInfo.fullDateStr; // "YYYY-MM-DD"
+    const startOfDay = `${dateStr}T00:00:00`;
+    const endOfDay   = `${dateStr}T23:59:59`;
+
+    supabase
+      .from('presencas')
+      .select('id, atividade_id')
+      .eq('user_id', profile.id)
+      .gte('checkin_time', startOfDay)
+      .lte('checkin_time', endOfDay)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          const map = {};
+          data.forEach(p => { map[p.atividade_id] = p.id; });
+          setConfirmacoes(map);
+        } else {
+          setConfirmacoes({});
+        }
+      });
+  }, [profile, selectedDayInfo.fullDateStr]);
+
+  const handleConfirmar = async (item) => {
+    if (!profile || confirming) return;
+    setConfirming(item.id);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = selectedDayInfo.fullDateStr === todayStr;
+    const timeToInsert = isToday 
+      ? new Date().toISOString() 
+      : `${selectedDayInfo.fullDateStr}T${item.start_time || '12:00:00'}`;
+
+    const { data, error } = await supabase
+      .from('presencas')
+      .insert([
+        { 
+          user_id: profile.id, 
+          atividade_id: item.id, 
+          checkin_time: timeToInsert,
+          qr_checkin: false 
+        }
+      ])
+      .select('id')
+      .single();
+
+    if (!error && data) {
+      setConfirmacoes(prev => ({ ...prev, [item.id]: data.id }));
+    } else if (error) {
+      console.error("Erro ao confirmar presença:", error);
+    }
+    setConfirming(null);
+  };
+
+  const handleCancelar = async (atividadeId) => {
+    const presencaId = confirmacoes[atividadeId];
+    if (!presencaId) return;
+    const { error } = await supabase.from('presencas').delete().eq('id', presencaId);
+    if (!error) {
+      setConfirmacoes(prev => {
+        const next = { ...prev };
+        delete next[atividadeId];
+        return next;
+      });
+    }
+  };
 
   const filteredActivities = activities.filter(item => {
     if (item.active === false) return false;
@@ -161,6 +178,9 @@ const Agenda = () => {
           <div className="space-y-4">
             {filteredActivities.map((item, index) => {
               const isConfirmed = !!confirmacoes[item.id];
+              const todayStr = new Date().toISOString().split('T')[0];
+              const isPast = selectedDayInfo.fullDateStr < todayStr;
+
               return (
                 <div
                   key={item.id || index}
@@ -182,8 +202,8 @@ const Agenda = () => {
                       {item.description}
                     </p>
 
-                    {/* Botões de confirmação — apenas para hoje */}
-                    {isToday && (
+                    {/* Botões de confirmação para hoje e dias futuros */}
+                    {!isPast ? (
                       <div className="pt-3 flex items-center gap-4">
                         {isConfirmed ? (
                           <>
@@ -195,26 +215,24 @@ const Agenda = () => {
                               onClick={() => handleCancelar(item.id)}
                               className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors underline underline-offset-2"
                             >
-                              Cancelar
+                              Cancelar Presença
                             </button>
                           </>
                         ) : (
                           <button
-                            onClick={() => handleConfirmar(item.id)}
+                            onClick={() => handleConfirmar(item)}
                             disabled={!!confirming}
-                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline disabled:opacity-40 transition-colors"
+                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline disabled:opacity-40 transition-colors flex items-center gap-1"
                           >
+                            <span className="material-symbols-outlined text-sm">add_circle</span>
                             {confirming === item.id ? 'Confirmando...' : 'Confirmar Presença'}
                           </button>
                         )}
                       </div>
-                    )}
-
-                    {/* Dias futuros — sem ação disponível */}
-                    {!isToday && (
+                    ) : (
                       <div className="pt-3">
                         <span className="text-[10px] font-medium text-gray-300 uppercase tracking-widest">
-                          Confirmação disponível no dia
+                          Confirmação encerrada
                         </span>
                       </div>
                     )}
