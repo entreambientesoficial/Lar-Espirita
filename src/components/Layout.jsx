@@ -17,7 +17,7 @@ const Layout = ({ children }) => {
   const navItems = [
     { path: '/dashboard', label: 'Início', icon: 'home' },
     { path: '/agenda', label: 'Agenda', icon: 'calendar_month' },
-    { path: '/checkin', label: 'Check-in', icon: 'qr_code_scanner' },
+    { path: '/checkin', label: 'Check-in', icon: 'location_on' },
     { path: '/mensagens', label: 'Mural', icon: 'forum' },
     { path: '/admin', label: 'Administração', icon: 'admin_panel_settings', adminOnly: true },
   ];

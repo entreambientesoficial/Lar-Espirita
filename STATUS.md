@@ -264,3 +264,50 @@ Módulo a ser desenvolvido futuramente para a equipe da lanchonete da Casa. Aces
 - [ ] Módulo Lanchonete (previsto para V2.0).
 - [ ] Relatórios analíticos de frequência e fluxo de atendimento acumulado por mês.
 
+---
+
+## 13. Evolução V2.0 — Sistema de Check-in por Geolocalização (GPS)
+
+*Status atualizado por: Inteligência Artificial (Antigravity).*  
+*Fase atual: **V 2.0 — Check-in Principal migrado para Geolocalização (GPS) com Raio Configurável, Validação Server-Side RPC no Supabase, Janela de Horário e QR Code preservado como Fallback Operacional**.*
+
+### Resumo Técnico da Evolução:
+1. **Migração do Método Principal para Geolocalização**:
+   - Substituição do destaque de QR Code na interface do voluntário pelo botão **"Fazer Check-in"** baseado na geolocalização do dispositivo (`navigator.geolocation`).
+   - Validação da distância em metros em relação às coordenadas oficiais da Casa Espírita Apometria Elos de Amor e Paz.
+
+2. **Área Administrativa e Captura de Coordenadas**:
+   - Seção **"Localização para Check-in"** incorporada na aba de administração.
+   - Campos editáveis: *Latitude*, *Longitude*, *Raio permitido (metros)*.
+   - Botão **`[ Usar minha localização atual ]`**: captura as coordenadas GPS reais do administrador (quando fisicamente na Casa) utilizando `navigator.geolocation.getCurrentPosition` com alta precisão e exibição do nível de precisão obtido.
+   - Raio padrão configurado para **100 metros**, editável sem necessidade de alteração de código.
+
+3. **Validação Rígida Server-Side no Supabase (RPC)**:
+   - Toda a confirmação de presença por geolocalização e QR code é processada exclusivamente através da RPC transacional `public.realizar_checkin(...)` no PostgreSQL ( SECURITY DEFINER ).
+   - Sem fallback client-side para escrita em banco: se a RPC estiver indisponível ou retornar erro, nenhuma presença é gravada pelo frontend e o sistema direciona amigavelmente ao QR Code fallback.
+   - Validações da RPC:
+     - `auth.uid()` autenticado e válido.
+     - Atendimento/Escala agendado para o dia da semana atual ou data específica do atendimento extra.
+     - Confirmação prévia do voluntário vinculada na tabela `presencas` para o trabalho de hoje (registro gerado na confirmação pela Agenda com `qr_checkin = false`).
+     - Ausência de check-in efetuado anteriormente (`qr_checkin = false`).
+     - Janela de horário permitida: de **30 minutos antes** até **30 minutos depois** do `start_time` da atividade (calculado no fusorário `America/Sao_Paulo`).
+     - Distância Haversine <= `casa_config.raio_metros`.
+
+4. **Tratamento de Precisão do GPS e Erros do Dispositivo**:
+   - Medição contínua da precisão (`coords.accuracy`). Caso a precisão inicial seja fraca (> 50m), o sistema executa releitura com a mensagem *"Estamos tentando obter uma localização mais precisa..."*.
+   - Tratamento amigável para permissão de localização negada pelo usuário: *"Para confirmar sua presença automaticamente, permita o acesso à localização do dispositivo."* com opções `[Tentar novamente]` e `[Usar QR Code]`.
+   - Tratamento para GPS indisponível / timeout: *"Não foi possível confirmar sua localização."* com opções `[Tentar novamente]` e `[Usar QR Code]`.
+   - Exibição discreta de distância aproximada em metros quando o usuário tenta check-in fora do raio.
+
+5. **Preservação Integral do QR Code (Fallback)**:
+   - Nenhum componente, tabela, rota, lógica ou gerador do QR Code foi removido.
+   - O QR Code permanece ativo como método alternativo operacional para casos excepcionais (voluntário sem GPS, bateria fraca ou falha de sinal).
+
+6. **Privacidade dos Dados**:
+   - Sem rastreamento contínuo em segundo plano e sem histórico de movimentação do voluntário.
+   - Apenas a distância calculada e a precisão do GPS no momento do toque em "Fazer Check-in" são salvas junto à presença (`checkin_method`, `checkin_distance_meters`, `checkin_accuracy_meters`).
+
+7. **Migration Criada**:
+   - `migration_checkin_geolocation.sql` (100% Idempotente para execução manual no Supabase SQL Editor).
+
+

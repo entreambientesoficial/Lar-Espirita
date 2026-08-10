@@ -71,6 +71,14 @@ const Admin = () => {
   const [loadingAdminActivities, setLoadingAdminActivities] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
 
+  // Estados da Configuração de Geolocalização da Casa
+  const [casaLat, setCasaLat] = useState('');
+  const [casaLng, setCasaLng] = useState('');
+  const [casaRaio, setCasaRaio] = useState('100');
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gettingGps, setGettingGps] = useState(false);
+  const [savingCasaConfig, setSavingCasaConfig] = useState(false);
+
   const [actName, setActName] = useState('Apometria');
   const [actDate, setActDate] = useState('');
   const [actStartTime, setActStartTime] = useState('13:30');
@@ -88,6 +96,7 @@ const Admin = () => {
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
 
   useEffect(() => {
     if (!toast) return;
@@ -295,7 +304,66 @@ const Admin = () => {
       setReflectionImageUrl(reflectionData.image_url || '');
     }
 
+    // 4. Buscar Configurações de Geolocalização da Casa
+    const config = await dataService.getCasaConfig();
+    if (config) {
+      if (config.latitude !== null && config.latitude !== undefined) setCasaLat(String(config.latitude));
+      if (config.longitude !== null && config.longitude !== undefined) setCasaLng(String(config.longitude));
+      if (config.raio_metros) setCasaRaio(String(config.raio_metros));
+    }
+
     setLoading(false);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      showToast("Geolocalização não é suportada pelo seu navegador.", "error");
+      return;
+    }
+    setGettingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setCasaLat(latitude.toFixed(7));
+        setCasaLng(longitude.toFixed(7));
+        setGpsAccuracy(Math.round(accuracy * 10) / 10);
+        setGettingGps(false);
+        showToast(`Localização capturada! Precisão do GPS: ${Math.round(accuracy)}m`, "success");
+      },
+      (error) => {
+        setGettingGps(false);
+        console.error("Erro ao obter GPS:", error);
+        showToast("Não foi possível obter a localização atual do dispositivo.", "error");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleSaveCasaConfig = async (e) => {
+    e.preventDefault();
+    setSavingCasaConfig(true);
+    const latNum = parseFloat(casaLat);
+    const lngNum = parseFloat(casaLng);
+    const raioNum = parseInt(casaRaio, 10);
+
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      showToast("Por favor, preencha latitude e longitude válidas.", "error");
+      setSavingCasaConfig(false);
+      return;
+    }
+
+    const { error } = await dataService.updateCasaConfig({
+      latitude: latNum,
+      longitude: lngNum,
+      raio_metros: isNaN(raioNum) ? 100 : raioNum
+    });
+
+    setSavingCasaConfig(false);
+    if (error) {
+      showToast("Erro ao salvar localização da Casa: " + error.message, "error");
+    } else {
+      showToast("Localização e raio de check-in salvos com sucesso!", "success");
+    }
   };
 
   const handleSaveReflection = async (e) => {
@@ -1294,12 +1362,108 @@ const Admin = () => {
           </form>
         </div>
       ) : activeTab === 'qrcode' ? (
-        /* QR Code Tab */
-        <div className="flex flex-col items-center gap-8 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-10 border border-gray-100 shadow-sm flex flex-col items-center gap-6 max-w-sm w-full">
+        /* QR Code & Location Config Tab */
+        <div className="flex flex-col items-center gap-8 animate-in fade-in max-w-2xl mx-auto w-full">
+          {/* Card: Localização para Check-in */}
+          <div className="w-full bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-headline font-bold text-xl text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">location_on</span>
+                  Localização para Check-in
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Defina as coordenadas oficiais da Casa para validação do check-in automático por geolocalização.
+                </p>
+              </div>
+              {casaLat && casaLng ? (
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-full uppercase shrink-0">
+                  ✓ Localização configurada
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black rounded-full uppercase shrink-0">
+                  ⚠️ Pendente de configuração
+                </span>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveCasaConfig} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="-23.960000"
+                    value={casaLat}
+                    onChange={(e) => setCasaLat(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none text-sm font-mono font-bold text-primary"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="-46.380000"
+                    value={casaLng}
+                    onChange={(e) => setCasaLng(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none text-sm font-mono font-bold text-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Raio permitido (metros)</label>
+                <input
+                  type="number"
+                  min="10"
+                  max="5000"
+                  placeholder="100"
+                  value={casaRaio}
+                  onChange={(e) => setCasaRaio(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold text-primary"
+                />
+                <p className="text-[10px] text-gray-400">Distância máxima em relação à Casa. Padrão: 100 metros.</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={gettingGps}
+                  className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-primary rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base">my_location</span>
+                  {gettingGps ? 'Capturando GPS...' : 'Usar minha localização atual'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingCasaConfig}
+                  className="flex-1 py-3 px-4 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {savingCasaConfig ? 'Salvando...' : 'Salvar Localização'}
+                </button>
+              </div>
+
+              {gpsAccuracy !== null && (
+                <p className="text-[11px] text-primary/70 font-medium italic text-center pt-1">
+                  Precisão obtida no momento da captura: {gpsAccuracy} metros.
+                </p>
+              )}
+            </form>
+          </div>
+
+          {/* Card: QR Code de Presença (Fallback) */}
+          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-100 shadow-sm flex flex-col items-center gap-6 max-w-md w-full">
             <div className="space-y-1 text-center">
-              <h3 className="font-headline font-bold text-xl text-primary">QR Code de Presença</h3>
-              <p className="text-gray-500 text-sm">Imprima e fixe em local visível na Casa para os voluntários escanearem.</p>
+              <h3 className="font-headline font-bold text-xl text-primary">QR Code de Presença (Fallback)</h3>
+              <p className="text-gray-500 text-sm">Imprima e fixe na Casa como método alternativo em casos de indisponibilidade de GPS.</p>
             </div>
 
             <div id="qrcode-print-area" className="bg-white p-6 rounded-2xl border-2 border-gray-100 flex flex-col items-center gap-4">
@@ -1337,10 +1501,10 @@ const Admin = () => {
             </button>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 max-w-sm w-full flex gap-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 max-w-md w-full flex gap-3">
             <span className="material-symbols-outlined text-amber-500 text-xl shrink-0">info</span>
             <p className="text-xs text-amber-800 font-medium leading-relaxed">
-              Este QR Code é único e exclusivo desta Casa. Apenas voluntários com o app instalado conseguem usá-lo para registrar presença.
+              O QR Code é mantido como método alternativo (fallback). Caso o voluntário esteja sem GPS ou com falha de sinal, poderá escanear o QR Code oficial da Casa.
             </p>
           </div>
         </div>

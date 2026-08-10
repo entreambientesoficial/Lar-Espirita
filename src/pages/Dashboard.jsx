@@ -318,12 +318,20 @@ const Dashboard = () => {
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Presença Confirmada</span>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <button
-                  onClick={() => navigate('/checkin')}
-                  className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
-                >
-                  Check-in
-                </button>
+                {activity.qr_checkin ? (
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                    <span className="material-symbols-outlined text-base">verified</span>
+                    Check-in Realizado
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => navigate('/checkin')}
+                    className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-lg">location_on</span>
+                    Fazer Check-in
+                  </button>
+                )}
                 {!activity.qr_checkin && (
                   <button
                     onClick={handleCancelCheckin}

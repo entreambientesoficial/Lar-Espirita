@@ -110,6 +110,60 @@ export const dataService = {
     return { presenca_id: data.id, qr_checkin: data.qr_checkin, ...data.atividades };
   },
 
+  // Buscar configurações de geolocalização e raio da Casa
+  getCasaConfig: async () => {
+    const { data, error } = await supabase
+      .from('casa_config')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    if (error || !data) {
+      return { latitude: null, longitude: null, raio_metros: 100, janela_checkin_minutos: 30 };
+    }
+    return data;
+  },
+
+  // Atualizar configurações da Casa (admin)
+  updateCasaConfig: async (configData) => {
+    const { data, error } = await supabase
+      .from('casa_config')
+      .upsert([
+        {
+          id: 1,
+          latitude: configData.latitude,
+          longitude: configData.longitude,
+          raio_metros: configData.raio_metros || 100,
+          janela_checkin_minutos: configData.janela_checkin_minutos || 30,
+          updated_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  // Executar Check-in obrigatoriamente via RPC server-side (sem fallback client-side)
+  realizarCheckin: async ({ atividadeId, method, lat = null, lng = null, accuracy = null }) => {
+    const { data, error } = await supabase.rpc('realizar_checkin', {
+      p_atividade_id: atividadeId,
+      p_method: method,
+      p_lat: lat,
+      p_lng: lng,
+      p_accuracy: accuracy
+    });
+
+    if (error) {
+      console.error("Erro na RPC realizar_checkin:", error);
+      return {
+        success: false,
+        rpcError: true,
+        message: 'O serviço de check-in por geolocalização está indisponível no momento. Por favor, utilize o QR Code como método alternativo.'
+      };
+    }
+
+    return data || { success: false, message: 'Resposta inválida do servidor.' };
+  },
+
   // Registrar presença
   registerPresence: async (userId, activityId) => {
     const { data, error } = await supabase
@@ -128,3 +182,20 @@ export const dataService = {
       .subscribe();
   }
 }
+
+/**
+ * Cálculo da distância Haversine em metros
+ */
+export const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const R = 6371000; // Raio da Terra em metros
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+};
+
