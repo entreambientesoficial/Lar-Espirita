@@ -1,24 +1,29 @@
 -- ============================================================
--- Migration Idempotente: Check-in por Geolocalização & RPC
+-- Migration Idempotente: Check-in por Geolocalização & RPC (V2.1)
 -- Projeto: Portal do Voluntário - Apometria Elos de Amor e Paz
 -- ============================================================
 
 BEGIN;
 
--- 1. Tabela de Configurações da Casa (Localização GPS e Raio)
+-- 1. Tabela de Configurações da Casa (Localização GPS, Raio e Token QR)
 CREATE TABLE IF NOT EXISTS public.casa_config (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   latitude DOUBLE PRECISION NULL,
   longitude DOUBLE PRECISION NULL,
   raio_metros INTEGER NOT NULL DEFAULT 100 CHECK (raio_metros > 0),
   janela_checkin_minutos INTEGER NOT NULL DEFAULT 30 CHECK (janela_checkin_minutos >= 0),
+  qr_token TEXT NOT NULL DEFAULT 'LBEB-PRESENCA-2026',
   updated_at TIMESTAMPTZ DEFAULT now(),
   updated_by UUID REFERENCES public.profiles(id)
 );
 
+-- Garantir coluna qr_token se a tabela já existia
+ALTER TABLE public.casa_config
+ADD COLUMN IF NOT EXISTS qr_token TEXT NOT NULL DEFAULT 'LBEB-PRESENCA-2026';
+
 -- Inserção idempotente do registro inicial com id = 1
-INSERT INTO public.casa_config (id, latitude, longitude, raio_metros, janela_checkin_minutos)
-VALUES (1, NULL, NULL, 100, 30)
+INSERT INTO public.casa_config (id, latitude, longitude, raio_metros, janela_checkin_minutos, qr_token)
+VALUES (1, NULL, NULL, 100, 30, 'LBEB-PRESENCA-2026')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Novas colunas na tabela presencas
@@ -47,13 +52,18 @@ CREATE POLICY "casa_config_update_policy" ON public.casa_config
 CREATE POLICY "casa_config_insert_policy" ON public.casa_config
   FOR INSERT TO authenticated WITH CHECK (public.is_admin());
 
--- 4. Função RPC Transacional de Check-in (Geolocalização / QR Code Fallback)
+-- 4. Remoção de assinaturas legadas da RPC
+DROP FUNCTION IF EXISTS public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC);
+DROP FUNCTION IF EXISTS public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT);
+
+-- 5. Função RPC Transacional de Check-in (Geolocalização / QR Code Fallback)
 CREATE OR REPLACE FUNCTION public.realizar_checkin(
   p_atividade_id UUID,
   p_method TEXT,
   p_lat DOUBLE PRECISION DEFAULT NULL,
   p_lng DOUBLE PRECISION DEFAULT NULL,
-  p_accuracy NUMERIC DEFAULT NULL
+  p_accuracy NUMERIC DEFAULT NULL,
+  p_qr_token TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -67,7 +77,7 @@ DECLARE
   v_distance_meters NUMERIC;
   v_presenca_id UUID;
   v_already_checked_in BOOLEAN;
-  v_now TIMESTAMPTZ;
+  v_now_local TIMESTAMP WITHOUT TIME ZONE;
   v_now_time TIME;
   v_today_date DATE;
   v_dow INTEGER;
@@ -78,6 +88,7 @@ DECLARE
   v_dlng DOUBLE PRECISION;
   v_a DOUBLE PRECISION;
   v_c DOUBLE PRECISION;
+  v_official_token TEXT;
 BEGIN
   -- 1. Validar Usuário Autenticado
   v_user_id := auth.uid();
@@ -91,13 +102,13 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'message', 'Atendimento/Escala não encontrado ou inativo.');
   END IF;
 
-  -- Horário local no Brasil (São Paulo, UTC-3)
-  v_now := NOW() AT TIME ZONE 'America/Sao_Paulo';
-  v_today_date := v_now::date;
-  v_now_time := v_now::time;
-  v_dow := EXTRACT(DOW FROM v_now)::integer;
+  -- 3. Horário local no Brasil (São Paulo) armazenado em TIMESTAMP WITHOUT TIME ZONE
+  v_now_local := NOW() AT TIME ZONE 'America/Sao_Paulo';
+  v_today_date := v_now_local::date;
+  v_now_time := v_now_local::time;
+  v_dow := EXTRACT(DOW FROM v_now_local)::integer;
 
-  -- 3. Validar se a atividade é agendada para o dia atual
+  -- Validar se a atividade é agendada para o dia atual
   IF v_act.event_date IS NOT NULL THEN
     IF v_act.event_date <> v_today_date THEN
       RETURN jsonb_build_object('success', false, 'message', 'Este atendimento não está agendado para a data de hoje.');
@@ -108,14 +119,15 @@ BEGIN
     END IF;
   END IF;
 
-  -- 4. Validar se o usuário possui confirmação prévia para essa atividade hoje em presencas
+  -- 4. Lock de Concorrência (FOR UPDATE) na seleção da presença existente
   SELECT id, qr_checkin INTO v_presenca_id, v_already_checked_in
   FROM public.presencas
   WHERE user_id = v_user_id
     AND atividade_id = p_atividade_id
     AND checkin_time >= (v_today_date::timestamp AT TIME ZONE 'America/Sao_Paulo')
   ORDER BY checkin_time DESC
-  LIMIT 1;
+  LIMIT 1
+  FOR UPDATE;
 
   IF v_presenca_id IS NULL THEN
     RETURN jsonb_build_object(
@@ -157,7 +169,14 @@ BEGIN
     END IF;
   END IF;
 
-  -- 7. Validar método de check-in (Geolocalização / QR Code)
+  -- 7. Tratamento e Validação da Precisão do GPS (Accuracy)
+  IF p_accuracy IS NOT NULL THEN
+    IF p_accuracy < 0 OR p_accuracy > 10000 THEN
+      RETURN jsonb_build_object('success', false, 'message', 'Valor de precisão do GPS (accuracy) inválido.');
+    END IF;
+  END IF;
+
+  -- 8. Validar Método de Check-in
   IF p_method = 'geolocation' THEN
     IF v_config.latitude IS NULL OR v_config.longitude IS NULL THEN
       RETURN jsonb_build_object('success', false, 'message', 'A localização da Casa ainda não foi configurada pela administração.');
@@ -183,13 +202,20 @@ BEGIN
         'raio_configurado', v_config.raio_metros
       );
     END IF;
+
   ELSIF p_method = 'qrcode' THEN
     v_distance_meters := NULL;
+    v_official_token := COALESCE(v_config.qr_token, 'LBEB-PRESENCA-2026');
+
+    IF p_qr_token IS NULL OR p_qr_token <> v_official_token THEN
+      RETURN jsonb_build_object('success', false, 'message', 'Token de QR Code inválido ou não fornecido.');
+    END IF;
+
   ELSE
     RETURN jsonb_build_object('success', false, 'message', 'Método de check-in inválido.');
   END IF;
 
-  -- 8. Efetivar presenças atualizando o registro existente
+  -- 9. Efetivar presenças atualizando o registro existente
   UPDATE public.presencas
   SET qr_checkin = true,
       checkin_method = p_method,
@@ -201,10 +227,17 @@ BEGIN
   RETURN jsonb_build_object(
     'success', true,
     'message', 'Check-in realizado com sucesso!',
-    'checkin_at', to_char(v_now, 'HH24:MI'),
+    'checkin_at', to_char(v_now_local, 'HH24:MI'),
     'distance_meters', v_distance_meters
   );
 END;
 $$;
+
+-- 6. Permissões explícitas da RPC
+REVOKE ALL ON FUNCTION public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.realizar_checkin(UUID, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT) TO authenticated;
+
+-- 7. Notificar PostgREST para recarregar o schema
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;

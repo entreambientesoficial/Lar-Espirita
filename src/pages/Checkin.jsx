@@ -223,10 +223,11 @@ const Checkin = () => {
       return;
     }
 
-    // Executa check-in via RPC com p_method = 'qrcode'
+    // Executa check-in via RPC com p_method = 'qrcode' enviando obrigatoriamente o qrToken
     const res = await dataService.realizarCheckin({
       atividadeId: activity.id,
-      method: 'qrcode'
+      method: 'qrcode',
+      qrToken: textCode
     });
 
     if (res.success || res.already_done) {

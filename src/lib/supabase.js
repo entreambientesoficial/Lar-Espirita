@@ -143,13 +143,14 @@ export const dataService = {
   },
 
   // Executar Check-in obrigatoriamente via RPC server-side (sem fallback client-side)
-  realizarCheckin: async ({ atividadeId, method, lat = null, lng = null, accuracy = null }) => {
+  realizarCheckin: async ({ atividadeId, method, lat = null, lng = null, accuracy = null, qrToken = null }) => {
     const { data, error } = await supabase.rpc('realizar_checkin', {
       p_atividade_id: atividadeId,
       p_method: method,
       p_lat: lat,
       p_lng: lng,
-      p_accuracy: accuracy
+      p_accuracy: accuracy,
+      p_qr_token: qrToken
     });
 
     if (error) {
@@ -157,7 +158,7 @@ export const dataService = {
       return {
         success: false,
         rpcError: true,
-        message: 'O serviço de check-in por geolocalização está indisponível no momento. Por favor, utilize o QR Code como método alternativo.'
+        message: 'O serviço de check-in está indisponível no momento. Por favor, tente novamente ou utilize o QR Code como método alternativo.'
       };
     }
 
