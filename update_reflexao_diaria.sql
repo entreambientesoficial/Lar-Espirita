@@ -1,11 +1,12 @@
 -- ============================================================
--- Migration Idempotente: Atualizar Frase da Reflexão do Dia
+-- Migration Idempotente: Atualizar Frase da Reflexão do Dia (Corrigida)
 -- Projeto: Portal do Voluntário - Apometria Elos de Amor e Paz
 -- Executar no Supabase SQL Editor
 -- ============================================================
 
 BEGIN;
 
+-- 1. Criar a tabela se ela ainda não existir
 CREATE TABLE IF NOT EXISTS public.reflexao_diaria (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   quote TEXT NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.reflexao_diaria (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 2. Inserir ou atualizar o registro de id = 1
 INSERT INTO public.reflexao_diaria (id, quote, author, image_url)
 VALUES (
   1,
@@ -24,8 +26,7 @@ VALUES (
 ON CONFLICT (id) DO UPDATE
 SET quote = EXCLUDED.quote,
     author = EXCLUDED.author,
+    image_url = EXCLUDED.image_url,
     updated_at = now();
-
-NOTIFY pgrst, 'reload schema';
 
 COMMIT;
