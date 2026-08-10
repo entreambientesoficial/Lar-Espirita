@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration Idempotente: Atualizar Frase da Reflexão do Dia (Corrigida)
+-- Migration Idempotente: Atualizar Frase da Reflexão do Dia
 -- Projeto: Portal do Voluntário - Apometria Elos de Amor e Paz
 -- Executar no Supabase SQL Editor
 -- ============================================================
@@ -20,7 +20,7 @@ INSERT INTO public.reflexao_diaria (id, quote, author, image_url)
 VALUES (
   1,
   'O mundo exterior é o espelho exato do seu estado de espírito. Quando você desacelera e limpa as energias densas, a sua verdadeira Natureza Divina — que é saudável, pacífica e intocável — se manifesta. Você não é o cansaço que sente hoje; você é a luz que habita atrás dele. Sintonize-se com a harmonia e desfaça os nós do passado.',
-  'Lauro Michielin - Espírito Luigi Santi Campo',
+  'Apometria - Elos de Amor e Paz',
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80'
 )
 ON CONFLICT (id) DO UPDATE
