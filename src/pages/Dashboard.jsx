@@ -89,7 +89,7 @@ const Dashboard = () => {
         id: 1,
         quote: "O mundo exterior é o espelho exato do seu estado de espírito. Quando você desacelera e limpa as energias densas, a sua verdadeira Natureza Divina — que é saudável, pacífica e intocável — se manifesta. Você não é o cansaço que sente hoje; você é a luz que habita atrás dele. Sintonize-se com a harmonia e desfaça os nós do passado.",
         author: "Apometria - Elos de Amor e Paz",
-        image_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"
+        image_url: "https://lh3.googleusercontent.com/d/1PGTrJdif0iX3-YEGzLzssxIs__o_LQk8"
       };
 
       try {
